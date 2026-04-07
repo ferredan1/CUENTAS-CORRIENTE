@@ -80,6 +80,14 @@ export default async function DashboardPage({
     listarTopProveedoresConDeuda(5),
   ]);
 
+  const proveedoresPreview = topProveedores.map((p) => ({
+    id: p.id,
+    nombre: p.nombre,
+    saldo: p.saldo,
+    ultimoMovimientoFecha: p.ultimoMovimientoFecha?.toISOString() ?? null,
+    vencimientoReferencia: p.vencimientoReferencia?.toISOString() ?? null,
+  }));
+
   const totalCartera = carteraKpis.totalCartera;
   const morosos = carteraKpis.morosos;
   const posicionNeta = totalCartera - proveedoresResumen.totalAPagar;
@@ -277,7 +285,7 @@ export default async function DashboardPage({
               />
             </div>
           </section>
-          <DashboardProveedoresPreview proveedores={topProveedores} />
+          <DashboardProveedoresPreview proveedores={proveedoresPreview} />
         </div>
       </div>
 

@@ -15,7 +15,7 @@ function whereSaldoPendienteProveedor(
   return {
     ...(extra ?? {}),
     OR: [{ tipo: { not: T_COMPRA } }, { tipo: T_COMPRA, liquidadoAt: null }],
-  } as const;
+  };
 }
 
 function trimOrNull(s: string | null | undefined): string | null {

@@ -12,7 +12,12 @@ export default async function ProveedoresPage({
   if (!userId) redirect("/login");
 
   const { q } = await searchParams;
-  const proveedores = await listarProveedoresConSaldo(q);
+  const rows = await listarProveedoresConSaldo(q);
+  const initialProveedores = rows.map((p) => ({
+    ...p,
+    ultimoMovimientoFecha: p.ultimoMovimientoFecha?.toISOString() ?? null,
+    vencimientoReferencia: p.vencimientoReferencia?.toISOString() ?? null,
+  }));
 
-  return <ProveedoresClient initialQ={q?.trim() ?? ""} initialProveedores={proveedores} />;
+  return <ProveedoresClient initialQ={q?.trim() ?? ""} initialProveedores={initialProveedores} />;
 }

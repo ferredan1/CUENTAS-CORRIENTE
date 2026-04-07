@@ -13,5 +13,10 @@ export async function getServerUserId(): Promise<string | null> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  return user?.id ?? null;
+  if (!user?.id) return null;
+  const allowed = process.env.AUTH_ALLOWED_EMAIL?.trim();
+  if (allowed && user.email?.toLowerCase() !== allowed.toLowerCase()) {
+    return null;
+  }
+  return user.id;
 }

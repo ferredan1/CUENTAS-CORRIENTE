@@ -4,7 +4,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LoginForm } from "./LoginForm";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const sp = await searchParams;
+  const bannerError =
+    sp.error === "email_no_autorizado"
+      ? "Ese correo no está autorizado para esta aplicación. Si creés que es un error, contactá al administrador."
+      : null;
   if (authBypassEnabled()) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 to-emerald-50/50 p-4">
@@ -52,5 +61,5 @@ export default async function LoginPage() {
     redirect("/dashboard");
   }
 
-  return <LoginForm />;
+  return <LoginForm bannerError={bannerError} />;
 }

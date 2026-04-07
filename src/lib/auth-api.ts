@@ -41,5 +41,14 @@ export async function requireAuth(): Promise<
     };
   }
 
+  const allowed = process.env.AUTH_ALLOWED_EMAIL?.trim();
+  if (allowed && user.email?.toLowerCase() !== allowed.toLowerCase()) {
+    return {
+      userId: null,
+      email: null,
+      error: NextResponse.json({ error: "Correo no autorizado" }, { status: 403 }),
+    };
+  }
+
   return { userId: user.id, email: user.email ?? null, error: null };
 }

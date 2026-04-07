@@ -5,7 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function LoginForm() {
+type Props = {
+  /** Mensaje desde la URL (p. ej. correo no autorizado tras cerrar sesión en el servidor). */
+  bannerError?: string | null;
+};
+
+export function LoginForm({ bannerError = null }: Props) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,9 +41,16 @@ export function LoginForm() {
           <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
             Ferretería
           </p>
-          <h1 className="page-title mt-1">Cuenta corriente</h1>
-          <p className="page-subtitle mt-2">Acceso con Supabase Auth</p>
+          <h1 className="page-title mt-1">Iniciar sesión</h1>
+          <p className="page-subtitle mt-2">
+            Solo correo electrónico y contraseña. No hay otros métodos de acceso.
+          </p>
         </div>
+        {bannerError ? (
+          <p className="alert-error mb-4" role="alert">
+            {bannerError}
+          </p>
+        ) : null}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="label-field">
@@ -68,17 +80,17 @@ export function LoginForm() {
               className="input-app"
             />
           </div>
-          {error && (
+          {error ? (
             <p className="alert-error" role="alert">
               {error}
             </p>
-          )}
+          ) : null}
           <button type="submit" disabled={loading} className="btn-primary w-full">
             {loading ? "Procesando…" : "Entrar"}
           </button>
         </form>
         <p className="mt-6 text-center text-sm text-slate-600">
-          Solo podés iniciar sesión con la cuenta habilitada para esta aplicación.
+          No hay registro público: la cuenta la crea quien administra el sistema.
         </p>
         <p className="mt-4 text-center">
           <Link href="/" className="text-xs text-slate-500 hover:text-slate-700">

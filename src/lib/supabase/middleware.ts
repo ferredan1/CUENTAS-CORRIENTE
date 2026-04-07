@@ -66,6 +66,24 @@ async function updateSessionInner(request: NextRequest): Promise<NextResponse> {
       data: { user },
     } = await supabase.auth.getUser();
 
+    const allowedEmail = process.env.AUTH_ALLOWED_EMAIL?.trim();
+    if (
+      user &&
+      allowedEmail &&
+      request.nextUrl.pathname.startsWith("/dashboard") &&
+      user.email?.toLowerCase() !== allowedEmail.toLowerCase()
+    ) {
+      await supabase.auth.signOut();
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("error", "email_no_autorizado");
+      const redirect = NextResponse.redirect(url);
+      for (const cookie of supabaseResponse.cookies.getAll()) {
+        redirect.cookies.set(cookie);
+      }
+      return redirect;
+    }
+
     if (!user && request.nextUrl.pathname.startsWith("/dashboard")) {
       return redirectToPathWithCookies(request, "/login", supabaseResponse);
     }
