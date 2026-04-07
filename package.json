@@ -1,0 +1,46 @@
+{
+  "name": "cuenta-corriente-ferreteria",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "postinstall": "prisma generate",
+    "db:push": "node -r ./scripts/dotenv-override.cjs ./node_modules/prisma/build/index.js db push",
+    "db:migrate": "node -r ./scripts/dotenv-override.cjs ./node_modules/prisma/build/index.js migrate dev",
+    "db:studio": "node -r ./scripts/dotenv-override.cjs ./node_modules/prisma/build/index.js studio",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.6.0",
+    "@prisma/client": "^7.6.0",
+    "@supabase/ssr": "^0.9.0",
+    "@supabase/supabase-js": "^2.100.1",
+    "@tanstack/react-virtual": "^3.13.23",
+    "dotenv": "^17.3.1",
+    "next": "16.2.1",
+    "pdf-parse": "^1.1.1",
+    "pg": "^8.20.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "xlsx": "^0.18.5",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.1",
+    "prisma": "^7.6.0",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.1.2"
+  }
+}

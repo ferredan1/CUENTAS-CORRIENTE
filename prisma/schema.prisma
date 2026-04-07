@@ -1,0 +1,318 @@
+// Cuenta corriente — ferretería (PostgreSQL + Prisma)
+// Single-tenant: sin userId en entidades de negocio.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum EstadoGestionCuenta {
+  CUENTA_CERRADA
+  EN_GESTION
+  FACTURADO_ENVIADO
+  FALTA_PAGO
+}
+
+enum TipoCliente {
+  particular
+  constructor
+}
+
+enum TipoMovimiento {
+  venta
+  pago
+  devolucion
+  ajuste
+}
+
+enum MedioPago {
+  efectivo
+  transferencia
+  cheque
+  tarjeta_debito
+  tarjeta_credito
+}
+
+enum ArchivoEstado {
+  subido
+  extraido
+  importado
+  error
+}
+
+enum TipoMovimientoProveedor {
+  compra
+  pago
+  ajuste
+}
+
+/// Historial de cambios por campo (sin userId de negocio).
+model LogCambio {
+  id           String   @id @default(cuid())
+  entidad      String
+  entidadId    String
+  campo        String
+  valorAntes   String
+  valorDespues String
+  creadoAt     DateTime @default(now())
+
+  @@index([entidadId])
+  @@index([creadoAt])
+}
+
+/// Registro de eliminaciones con snapshot JSON.
+model LogEliminacion {
+  id        String   @id @default(cuid())
+  entidad   String
+  entidadId String
+  snapshot  Json
+  creadoAt  DateTime @default(now())
+
+  @@index([creadoAt])
+}
+
+model Cliente {
+  id            String      @id @default(cuid())
+  /// Nombre comercial / razón social / cómo se muestra en listados
+  nombre        String
+  tipo          TipoCliente
+  /// Persona de contacto (opcional; útil para particulares y avisos)
+  nombrePersona String?
+  apellido      String?
+  cuit          String?
+  email         String?
+  telefono      String?
+  /// Gestión comercial (sin obras o movimientos sin obra asignada).
+  estadoGestionCuenta EstadoGestionCuenta @default(FALTA_PAGO)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now()) @updatedAt
+  obras         Obra[]
+  movimientos   Movimiento[]
+  archivos      Archivo[]
+  pagos         Pago[]
+
+  @@index([email])
+}
+
+model Obra {
+  id          String   @id @default(cuid())
+  nombre      String
+  estadoGestionCuenta EstadoGestionCuenta @default(FALTA_PAGO)
+  clienteId   String
+  cliente     Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+  movimientos Movimiento[]
+  archivos    Archivo[]
+
+  @@index([clienteId])
+  @@index([clienteId, nombre])
+}
+
+model Movimiento {
+  id             String          @id @default(cuid())
+  clienteId      String
+  obraId         String?
+  /// Ventas vinculadas al PDF de comprobante; al borrar el archivo se eliminan en cascada.
+  archivoId      String?
+  tipo           TipoMovimiento
+  fecha          DateTime
+  comprobante    String?
+  /// Clave normalizada para duplicados y búsquedas (ver `domain/comprobantes/normalize`).
+  normalizedComprobante String?
+  codigoProducto String?
+  medioPago      MedioPago?
+  chequeNumero   String?
+  chequeBanco    String?
+  chequeVencimiento DateTime?
+  /// Cuándo se recibió el cheque (puede diferir de `fecha` de imputación).
+  fechaRecepcion DateTime?
+  /// Ciclo de vida del cheque (cuando medioPago=cheque): en_cartera | depositado | acreditado | rechazado
+  estadoCheque   String?
+  descripcion    String
+  cantidad       Float
+  precioUnitario Decimal         @db.Decimal(14, 2)
+  total          Decimal         @db.Decimal(14, 2)
+  /// Monto impago de la venta (para pagos parciales vía AplicacionPago). Las ventas nuevas inician en `total`.
+  saldoPendiente Decimal         @default(0) @db.Decimal(14, 2)
+  /** Si la venta está liquidada (pagada) por un pago con el mismo comprobante. */
+  liquidadoAt    DateTime?
+  /** Movimiento de pago que liquidó esta venta (id). */
+  liquidadoPorPagoId String?
+  notas          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @default(now()) @updatedAt
+
+  cliente Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  obra    Obra?    @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  archivo Archivo? @relation(fields: [archivoId], references: [id], onDelete: Cascade)
+  aplicaciones AplicacionPago[]
+  pagoCabeceraDe Pago? @relation("PagoMovimiento")
+
+  @@index([clienteId])
+  @@index([obraId])
+  @@index([archivoId])
+  @@index([fecha])
+  @@index([clienteId, fecha])
+  @@index([obraId, fecha])
+  @@index([clienteId, tipo, comprobante])
+  @@index([clienteId, normalizedComprobante])
+  @@index([clienteId, liquidadoAt])
+}
+
+/// Registro de cobro del cliente (imputación vía AplicacionPago a ventas).
+model Pago {
+  id              String   @id @default(cuid())
+  clienteId       String
+  fecha           DateTime
+  importeTotal    Decimal  @db.Decimal(14, 2)
+  medioPago       MedioPago?
+  comprobante     String?
+  observaciones   String?
+  /// Movimiento tipo `pago` en el libro (mismo importe que importeTotal).
+  movimientoPagoId String? @unique
+  createdAt       DateTime @default(now())
+
+  cliente         Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  movimientoPago  Movimiento? @relation("PagoMovimiento", fields: [movimientoPagoId], references: [id], onDelete: SetNull)
+  aplicaciones    AplicacionPago[]
+
+  @@index([clienteId, fecha(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+}
+
+model AplicacionPago {
+  id              String   @id @default(cuid())
+  pagoId          String
+  movimientoId    String
+  importeAplicado Decimal  @db.Decimal(14, 2)
+  createdAt       DateTime @default(now())
+
+  pago       Pago       @relation(fields: [pagoId], references: [id], onDelete: Cascade)
+  movimiento Movimiento @relation(fields: [movimientoId], references: [id], onDelete: Cascade)
+
+  @@index([pagoId])
+  @@index([movimientoId])
+}
+
+model Archivo {
+  id        String         @id @default(cuid())
+  url       String
+  nombre    String?
+  /// Nº de comprobante inferido del PDF (por segmento); visible aun sin movimientos importados.
+  comprobante String?
+  clienteId String
+  obraId    String?
+  estado    ArchivoEstado  @default(subido)
+  /// Letra del comprobante (Dux/AFIP): A/B/C/X (si se pudo inferir del PDF).
+  letra     String?
+  /// CAE (14 dígitos) si el PDF lo incluye.
+  cae       String?
+  /// Vencimiento del CAE si el PDF lo incluye.
+  caeFechaVto DateTime?
+  /// CUIT del receptor/cliente inferido del PDF (11 dígitos, sin separadores).
+  cuitCliente String?
+  /// SHA-256 en hex (opcional; idempotencia / diagnóstico).
+  fileHash  String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @default(now()) @updatedAt
+
+  cliente      Cliente               @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  obra         Obra?                 @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  movimientos  Movimiento[]
+  extracciones ExtraccionArchivo[]
+
+  @@index([clienteId])
+  @@index([clienteId, createdAt])
+}
+
+/// Intento de extracción desacoplado del archivo físico (reintentos, errores, versión de parser).
+model ExtraccionArchivo {
+  id                  String   @id @default(cuid())
+  archivoId           String
+  intento             Int      @default(1)
+  /// pendiente | ok | error
+  estado              String
+  textoExtraido       String?  @db.Text
+  jsonExtraido        Json?
+  confianza           Float?
+  errores             String?  @db.Text
+  versionParser       String?
+  revisadoManualmente Boolean  @default(false)
+  revisadoPor         String?
+  importadoComoMovId  String?
+  createdAt           DateTime @default(now())
+
+  archivo Archivo @relation(fields: [archivoId], references: [id], onDelete: Cascade)
+
+  @@index([archivoId])
+  @@index([estado, createdAt(sort: Desc)])
+}
+
+model Proveedor {
+  id           String   @id @default(cuid())
+  nombre       String
+  razonSocial  String?
+  cuit         String?
+  email        String?
+  telefono     String?
+  condicionIva String?
+  notas        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  movimientos MovimientoProveedor[]
+  archivos    ArchivoProveedor[]
+
+  @@index([nombre])
+}
+
+model MovimientoProveedor {
+  id                    String                 @id @default(cuid())
+  proveedorId           String
+  archivoId             String?
+  tipo                  TipoMovimientoProveedor
+  fecha                 DateTime
+  comprobante           String?
+  normalizedComprobante String?
+  codigoProducto        String?
+  descripcion           String
+  cantidad              Float
+  precioUnitario        Decimal                @db.Decimal(14, 2)
+  total                 Decimal                @db.Decimal(14, 2)
+  liquidadoAt           DateTime?
+  liquidadoPorPagoId    String?
+  /// Vencimiento de la factura (compras); nullable.
+  fechaVencimiento      DateTime?
+  notas                 String?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @default(now()) @updatedAt
+
+  proveedor Proveedor        @relation(fields: [proveedorId], references: [id], onDelete: Cascade)
+  archivo   ArchivoProveedor? @relation(fields: [archivoId], references: [id], onDelete: SetNull)
+
+  @@index([proveedorId])
+  @@index([proveedorId, fecha])
+  @@index([proveedorId, normalizedComprobante])
+  @@index([proveedorId, liquidadoAt])
+  @@index([proveedorId, fechaVencimiento])
+}
+
+model ArchivoProveedor {
+  id          String   @id @default(cuid())
+  proveedorId String
+  url         String
+  nombre      String?
+  fileHash    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  proveedor   Proveedor            @relation(fields: [proveedorId], references: [id], onDelete: Cascade)
+  movimientos MovimientoProveedor[]
+
+  @@index([proveedorId])
+  @@index([proveedorId, createdAt])
+}

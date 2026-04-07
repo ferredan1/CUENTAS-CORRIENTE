@@ -1,0 +1,404 @@
+@import "tailwindcss";
+
+:root {
+  --background: #eef2f6;
+  --foreground: #0f172a;
+  --surface: #ffffff;
+  --accent: #047857;
+  --accent-hover: #065f46;
+  --accent-soft: #ecfdf5;
+  --border: #e2e8f0;
+  --muted: #64748b;
+  /* Semántica monetaria / estado */
+  --semantic-debt: #be123c;
+  --semantic-debt-bg: #fff1f2;
+  --semantic-favor: #047857;
+  --semantic-favor-bg: #ecfdf5;
+  --semantic-pending: #b45309;
+  --semantic-pending-bg: #fffbeb;
+  --semantic-neutral: #475569;
+  --radius-lg: 0.875rem;
+  --shadow-soft: 0 1px 2px rgb(15 23 42 / 0.04);
+  --shadow-card: 0 1px 3px rgb(15 23 42 / 0.06);
+  /* Jerarquía tipográfica (labels vs datos) */
+  --text-label: #64748b;
+  --text-label-strong: #475569;
+  --text-data: #0f172a;
+}
+
+:root.dark {
+  --background: #0b1220;
+  --foreground: #e2e8f0;
+  --surface: #0f172a;
+  --border: #1f2937;
+  --muted: #94a3b8;
+  --accent: #10b981;
+  --accent-hover: #34d399;
+  --accent-soft: #052e2b;
+  --semantic-debt: #fb7185;
+  --semantic-debt-bg: #2a0e17;
+  --semantic-favor: #34d399;
+  --semantic-favor-bg: #052e2b;
+  --semantic-pending: #fbbf24;
+  --semantic-pending-bg: #2a2006;
+  --semantic-neutral: #94a3b8;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@layer components {
+  .page-shell {
+    @apply w-full max-w-none space-y-5 px-0 sm:space-y-6 md:space-y-8;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold tracking-tight text-slate-900 md:text-3xl md:tracking-tight;
+  }
+
+  .page-subtitle {
+    @apply mt-1 max-w-2xl text-sm font-normal text-slate-500;
+  }
+
+  .page-subtitle-quiet {
+    @apply mt-1 max-w-xl text-xs font-normal leading-relaxed text-slate-400;
+  }
+
+  /** Meta / etiquetas: siempre más débiles que datos o títulos de bloque */
+  .ui-label {
+    @apply text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400;
+  }
+
+  .ui-label-strong {
+    @apply text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  /** Números de lectura rápida fuera de tablas */
+  .metric-value {
+    @apply font-mono text-2xl font-bold tabular-nums tracking-tight text-slate-900;
+    @apply dark:text-slate-50;
+  }
+
+  .section-header {
+    @apply mb-3 flex flex-wrap items-end justify-between gap-2 border-b border-slate-200 pb-2.5;
+  }
+
+  .section-title {
+    @apply text-xs font-bold uppercase tracking-wider text-slate-500;
+  }
+
+  /** Bloque de acciones en fila (toolbars): ritmo uniforme sin inflar targets */
+  .toolbar-cluster {
+    @apply flex flex-wrap items-center gap-x-2 gap-y-2;
+  }
+
+  .section-count {
+    @apply rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.65rem] font-semibold tabular-nums text-slate-600;
+  }
+
+  .breadcrumb-muted {
+    @apply flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.7rem] font-medium text-slate-400;
+  }
+
+  .breadcrumb-muted a {
+    @apply text-slate-500 hover:text-emerald-700;
+  }
+
+  .label-field {
+    @apply block text-xs font-medium text-slate-600 mb-1.5;
+  }
+
+  .input-app {
+    @apply h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm;
+    @apply placeholder:text-slate-400;
+    @apply transition-colors;
+    @apply focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20;
+    @apply disabled:bg-slate-50 disabled:text-slate-500;
+  }
+
+  .select-app {
+    @apply h-10 w-full cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm;
+    @apply transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20;
+  }
+
+  .btn-primary {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-emerald-800/20 bg-emerald-700 px-4 text-sm font-semibold text-white shadow-sm;
+    @apply transition-colors hover:bg-emerald-800 active:bg-emerald-900;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2;
+    @apply disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-tertiary {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm;
+    @apply transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:ring-offset-2;
+    @apply dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-800;
+  }
+
+  .btn-secondary {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm;
+    @apply transition-colors hover:border-slate-300 hover:bg-slate-50;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:ring-offset-2;
+    @apply disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600;
+    @apply transition-colors hover:bg-slate-100 hover:text-slate-900;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/25;
+    @apply dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-slate-100;
+  }
+
+  .btn-danger-ghost {
+    @apply text-rose-600 hover:text-rose-700 hover:bg-rose-50;
+  }
+
+  .card {
+    @apply rounded-xl border border-slate-200/70 bg-white p-5 shadow-[var(--shadow-card)];
+    @apply dark:border-slate-800/80 dark:bg-slate-950;
+  }
+
+  .card-compact {
+    @apply rounded-xl border border-slate-200/70 bg-white p-4 shadow-[var(--shadow-soft)];
+    @apply dark:border-slate-800/80 dark:bg-slate-950;
+  }
+
+  .card-ghost {
+    @apply rounded-xl bg-white/60 px-1 py-1 sm:px-0;
+    @apply dark:bg-slate-950/40;
+  }
+
+  .stat-card {
+    @apply rounded-xl border border-slate-200/70 bg-white p-4 shadow-[var(--shadow-soft)];
+    @apply transition-shadow hover:shadow-md;
+  }
+
+  .stat-kpi {
+    @apply relative overflow-hidden rounded-xl border bg-white p-4 shadow-[var(--shadow-soft)];
+  }
+
+  .stat-kpi-label {
+    @apply text-[0.65rem] font-bold uppercase tracking-wider text-slate-500;
+  }
+
+  .stat-kpi-value {
+    @apply mt-2 font-mono text-2xl font-bold tabular-nums tracking-tight text-slate-900;
+  }
+
+  /** KPI compacto (dashboard) */
+  .kpi-instrument {
+    @apply relative flex items-start gap-2 rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-[var(--shadow-soft)];
+    @apply sm:gap-3 sm:p-3;
+    @apply dark:border-slate-800/80 dark:bg-slate-950;
+  }
+
+  .kpi-instrument-icon {
+    @apply mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-500 ring-1 ring-slate-200/80;
+    @apply sm:size-11;
+    @apply dark:bg-slate-900 dark:text-slate-400 dark:ring-slate-700/80;
+  }
+
+  .kpi-instrument-label {
+    @apply text-[0.6rem] font-semibold uppercase tracking-wide text-slate-500 sm:text-[0.65rem];
+  }
+
+  .kpi-instrument-value {
+    @apply mt-0.5 font-mono text-lg font-bold tabular-nums tracking-tight text-slate-900 sm:text-xl;
+    @apply dark:text-slate-100;
+  }
+
+  /**
+   * KPI secundario: mismo componente base pero menor peso que el bloque ejecutivo.
+   * No achica la tabla ni la densidad; solo la grilla de métricas del panel.
+   */
+  .kpi-instrument--secondary {
+    @apply p-2 shadow-none ring-1 ring-slate-200/60;
+    @apply dark:ring-slate-800/80;
+  }
+
+  .kpi-instrument--secondary .kpi-instrument-icon {
+    @apply size-8 sm:size-9;
+  }
+
+  .kpi-instrument--secondary .kpi-instrument-label {
+    @apply text-[0.58rem] text-slate-400;
+  }
+
+  .kpi-instrument--secondary .kpi-instrument-value {
+    @apply text-base sm:text-lg;
+  }
+
+  /** Métrica ejecutiva única (p. ej. posición neta en panel) */
+  .dashboard-kpi-hero {
+    @apply relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[var(--shadow-card)];
+    @apply dark:border-slate-800 dark:bg-slate-950;
+  }
+
+  .dashboard-kpi-hero-label {
+    @apply text-[0.65rem] font-bold uppercase tracking-wider text-slate-400;
+  }
+
+  .dashboard-kpi-hero-value {
+    @apply mt-2 font-mono text-3xl font-bold tabular-nums tracking-tight sm:text-4xl;
+  }
+
+  .dashboard-kpi-hero-hint {
+    @apply mt-2 max-w-xl text-xs leading-relaxed text-slate-500;
+  }
+
+  /** Cinta de primeros pasos: menor peso que KPIs reales */
+  .panel-empty-hint {
+    @apply rounded-xl border border-dashed border-slate-200/90 bg-slate-50/60 px-4 py-3;
+    @apply dark:border-slate-700/80 dark:bg-slate-900/40;
+  }
+
+  .empty-state {
+    @apply flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 py-10 px-4 text-center;
+  }
+
+  .empty-state-title {
+    @apply text-sm font-semibold text-slate-700;
+  }
+
+  .empty-state-hint {
+    @apply max-w-sm text-xs text-slate-500;
+  }
+
+  .table-shell {
+    @apply w-full max-w-full rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden overflow-x-auto overscroll-x-contain touch-pan-x;
+    @apply dark:border-slate-800/80 dark:bg-slate-950;
+  }
+
+  .table-app {
+    @apply w-full text-sm border-collapse;
+  }
+
+  .table-app thead tr {
+    @apply bg-slate-50 border-b border-slate-200;
+    @apply dark:bg-slate-900/50 dark:border-slate-800;
+  }
+
+  .table-app th {
+    @apply text-left p-3 font-semibold text-slate-600 text-xs uppercase tracking-wide border-r border-slate-200 last:border-r-0;
+    @apply dark:text-slate-300 dark:border-slate-800;
+  }
+
+  .table-app tbody tr {
+    @apply border-b border-slate-100 transition-colors;
+    @apply hover:bg-slate-50/80;
+    @apply dark:border-slate-900 dark:hover:bg-slate-900/40;
+  }
+
+  .table-app td {
+    @apply p-3 border-r border-slate-100 last:border-r-0 align-middle;
+    @apply dark:border-slate-900;
+  }
+
+  .link-app {
+    @apply text-emerald-700 font-medium hover:text-emerald-800 hover:underline underline-offset-2;
+  }
+
+  .badge-debt {
+    @apply inline-flex items-center rounded-md bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800 ring-1 ring-inset ring-rose-200;
+  }
+
+  .badge-ok {
+    @apply inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-inset ring-emerald-200;
+  }
+
+  .badge-pending {
+    @apply inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900 ring-1 ring-inset ring-amber-200/90;
+  }
+
+  .segmented {
+    @apply inline-flex max-w-full gap-1 rounded-lg bg-slate-100/90 p-1 ring-1 ring-slate-200/80;
+    @apply flex-nowrap overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch];
+    @apply sm:flex-wrap sm:overflow-visible;
+  }
+
+  .segmented-btn {
+    @apply whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium text-slate-600 transition-colors sm:px-3;
+    @apply hover:bg-white hover:text-slate-900 hover:shadow-sm;
+  }
+
+  .segmented-btn-active {
+    @apply bg-white text-emerald-900 shadow-sm ring-1 ring-slate-200/80;
+  }
+
+  .alert-error {
+    @apply rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800;
+  }
+
+  .alert-success {
+    @apply rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900;
+  }
+
+  .alert-warning {
+    @apply rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Tabla estilo Excel (celdas densas) */
+.excel-table th,
+.excel-table td {
+  border-color: rgb(226 232 240);
+}
+
+.excel-table thead tr {
+  @apply bg-slate-100;
+}
+
+.excel-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-shadow: 0 1px 0 rgb(226 232 240);
+}
+
+.excel-table tbody tr:nth-child(even) {
+  @apply bg-slate-50/40;
+}
+
+.excel-table tbody tr.group:hover {
+  @apply bg-emerald-50/25;
+}
+
+.excel-cell-input {
+  @apply rounded-sm transition-colors;
+}
+
+.excel-table tbody tr.group:hover .excel-cell-input:not(:focus) {
+  @apply bg-emerald-50/20;
+}
+
+.excel-scroll {
+  @apply max-h-[min(70vh,720px)] overflow-auto rounded-xl;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* View Transitions API (Next/navegación cuando el navegador lo soporte) */
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 0.25s;
+  animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+}
