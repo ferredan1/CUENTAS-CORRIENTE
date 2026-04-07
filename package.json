@@ -11,6 +11,7 @@
     "postinstall": "prisma generate",
     "db:push": "node -r ./scripts/dotenv-override.cjs ./node_modules/prisma/build/index.js db push",
     "db:migrate": "node -r ./scripts/dotenv-override.cjs ./node_modules/prisma/build/index.js migrate dev",
+    "db:deploy": "node -r ./scripts/dotenv-override.cjs ./node_modules/prisma/build/index.js migrate deploy",
     "db:studio": "node -r ./scripts/dotenv-override.cjs ./node_modules/prisma/build/index.js studio",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down"
