@@ -1,11 +1,6 @@
 import { formatFechaCorta, formatFechaLargaHoy, formatMoneda } from "@/lib/format";
 import { getServerUserId } from "@/lib/get-server-user-id";
-import {
-  contarPagosHoy,
-  importeCobrosHoy,
-  obtenerActividadReciente,
-  totalSaldoVencidoMas60Dias,
-} from "@/services/dashboard-metrics";
+import { obtenerActividadReciente } from "@/services/dashboard-metrics";
 import { DashboardPanelTopBar } from "@/components/dashboard/DashboardPanelTopBar";
 import { DashboardPrimaryActions } from "@/components/dashboard/DashboardPrimaryActions";
 import { DashboardProveedoresPreview } from "@/components/dashboard/DashboardProveedoresPreview";
@@ -13,9 +8,9 @@ import { ChequesBannerServer } from "./ChequesBannerServer";
 import { FacturasProveedorBannerServer } from "./FacturasProveedorBannerServer";
 import { listarClientesParaTabla, resumenCarteraPanel } from "@/services/clientes";
 import {
-  contarProveedores,
+  contarProveedoresUsuario,
   listarTopProveedoresConDeuda,
-  resumirProveedores,
+  resumirProveedoresUsuario,
 } from "@/services/proveedores";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -34,10 +29,11 @@ function embedRow(
     saldo: c.saldo,
     deudaMas90: c.deudaMas90,
     estadoCobranza: c.estadoCobranza,
-    estadoGestionCuenta: c.estadoGestionCuenta,
-    obrasEstado: c.obrasEstado,
     diasSinPagar: c.diasSinPagar,
     saldoVencido60: c.saldoVencido60,
+    estadoSaldoObras: c.estadoSaldoObras,
+    estadoSaldoSingle: c.estadoSaldoSingle ?? null,
+    obraSingleId: c.obraSingleId ?? null,
     ultimoMovimientoFecha: c.ultimoMovimientoFecha?.toISOString() ?? null,
     obrasCount: c.obrasCount,
   };
@@ -52,40 +48,28 @@ export default async function DashboardPage({
   if (!userId) redirect("/login");
 
   const { q } = await searchParams;
-  const [
-    carteraKpis,
-    paginaClientes,
-    actividad,
-    pagosHoy,
-    importeCobrosDia,
-    totalVencido60,
-    proveedoresResumen,
-    proveedoresCount,
-    topProveedores,
-  ] = await Promise.all([
-    resumenCarteraPanel(),
-    listarClientesParaTabla({
-      busqueda: q?.trim() || undefined,
-      filtro: "todos",
-      orderBy: "nombre",
-      limit: 80,
-      cursor: null,
-    }),
-    obtenerActividadReciente(),
-    contarPagosHoy(),
-    importeCobrosHoy(),
-    totalSaldoVencidoMas60Dias(),
-    resumirProveedores(),
-    contarProveedores(),
-    listarTopProveedoresConDeuda(5),
-  ]);
+  const [carteraKpis, paginaClientes, actividad, proveedoresResumen, proveedoresCount, topProveedores] =
+    await Promise.all([
+      resumenCarteraPanel(userId),
+      listarClientesParaTabla(userId, {
+        busqueda: q?.trim() || undefined,
+        filtro: "todos",
+        orderBy: "nombre",
+        limit: 80,
+        cursor: null,
+      }),
+      obtenerActividadReciente(),
+      resumirProveedoresUsuario(userId),
+      contarProveedoresUsuario(userId),
+      listarTopProveedoresConDeuda(userId, 5),
+    ]);
 
   const proveedoresPreview = topProveedores.map((p) => ({
     id: p.id,
     nombre: p.nombre,
     saldo: p.saldo,
-    ultimoMovimientoFecha: p.ultimoMovimientoFecha?.toISOString() ?? null,
-    vencimientoReferencia: p.vencimientoReferencia?.toISOString() ?? null,
+    ultimoMovimientoFecha: null,
+    vencimientoReferencia: null,
   }));
 
   const totalCartera = carteraKpis.totalCartera;
@@ -127,10 +111,10 @@ export default async function DashboardPage({
               Ir a proveedores
             </Link>
             <Link href="/dashboard/upload" className="btn-tertiary">
-              Subir PDF
+              Nueva venta
             </Link>
             <Link href="/dashboard/carga" className="btn-tertiary">
-              Cargar pago
+              Registrar cobro
             </Link>
           </div>
         </div>
@@ -143,7 +127,7 @@ export default async function DashboardPage({
               Posición financiera
             </h2>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <div className="flex flex-col rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/50">
               <div className="border-l-[4px] border-emerald-600 pl-3">
                 <p className="text-[0.65rem] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
@@ -186,38 +170,6 @@ export default async function DashboardPage({
                 }`}
               >
                 {morosos} {morosos === 1 ? "cliente" : "clientes"}
-              </span>
-            </div>
-            <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/50">
-              <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Vencido &gt; 60 días</p>
-              <p
-                className={`mt-1 text-2xl font-bold tabular-nums ${
-                  totalVencido60 > 0 ? "text-amber-800 dark:text-amber-200" : "text-slate-800 dark:text-slate-100"
-                }`}
-              >
-                {formatMoneda(totalVencido60)}
-              </p>
-              <span
-                className={`mt-3 inline-flex rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${
-                  totalVencido60 <= 0
-                    ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
-                    : "bg-amber-100 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100"
-                }`}
-              >
-                {totalVencido60 <= 0 ? "Al día" : "Revisar"}
-              </span>
-            </div>
-            <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/50">
-              <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">Cobros</p>
-              <p
-                className={`mt-1 text-2xl font-bold tabular-nums ${
-                  importeCobrosDia > 0 ? "text-emerald-700 dark:text-emerald-300" : "text-slate-800 dark:text-slate-100"
-                }`}
-              >
-                {formatMoneda(importeCobrosDia)}
-              </p>
-              <span className="mt-3 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[0.65rem] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                {pagosHoy} {pagosHoy === 1 ? "pago" : "pagos"} imputados
               </span>
             </div>
             <Link

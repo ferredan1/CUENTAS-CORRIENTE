@@ -10,10 +10,10 @@ export function DashboardPrimaryActions({
   return (
     <div className="toolbar-cluster shrink-0 flex-wrap justify-end">
       <Link href="/dashboard/upload" className="btn-tertiary">
-        Subir PDF
+        Nueva venta
       </Link>
       <Link href="/dashboard/carga" className="btn-secondary">
-        Cargar pago
+        Registrar cobro
       </Link>
       {includeNuevoCliente ? (
         <Link href="/dashboard/clientes" className="btn-primary">
