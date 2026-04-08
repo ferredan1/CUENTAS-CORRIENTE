@@ -8,9 +8,9 @@ import { ChequesBannerServer } from "./ChequesBannerServer";
 import { FacturasProveedorBannerServer } from "./FacturasProveedorBannerServer";
 import { listarClientesParaTabla, resumenCarteraPanel } from "@/services/clientes";
 import {
-  contarProveedoresUsuario,
+  contarProveedores,
   listarTopProveedoresConDeuda,
-  resumirProveedoresUsuario,
+  resumirProveedores,
 } from "@/services/proveedores";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -29,11 +29,10 @@ function embedRow(
     saldo: c.saldo,
     deudaMas90: c.deudaMas90,
     estadoCobranza: c.estadoCobranza,
+    estadoGestionCuenta: c.estadoGestionCuenta,
+    obrasEstado: c.obrasEstado,
     diasSinPagar: c.diasSinPagar,
     saldoVencido60: c.saldoVencido60,
-    estadoSaldoObras: c.estadoSaldoObras,
-    estadoSaldoSingle: c.estadoSaldoSingle ?? null,
-    obraSingleId: c.obraSingleId ?? null,
     ultimoMovimientoFecha: c.ultimoMovimientoFecha?.toISOString() ?? null,
     obrasCount: c.obrasCount,
   };
@@ -50,8 +49,8 @@ export default async function DashboardPage({
   const { q } = await searchParams;
   const [carteraKpis, paginaClientes, actividad, proveedoresResumen, proveedoresCount, topProveedores] =
     await Promise.all([
-      resumenCarteraPanel(userId),
-      listarClientesParaTabla(userId, {
+      resumenCarteraPanel(),
+      listarClientesParaTabla({
         busqueda: q?.trim() || undefined,
         filtro: "todos",
         orderBy: "nombre",
@@ -59,17 +58,17 @@ export default async function DashboardPage({
         cursor: null,
       }),
       obtenerActividadReciente(),
-      resumirProveedoresUsuario(userId),
-      contarProveedoresUsuario(userId),
-      listarTopProveedoresConDeuda(userId, 5),
+      resumirProveedores(),
+      contarProveedores(),
+      listarTopProveedoresConDeuda(5),
     ]);
 
   const proveedoresPreview = topProveedores.map((p) => ({
     id: p.id,
     nombre: p.nombre,
     saldo: p.saldo,
-    ultimoMovimientoFecha: null,
-    vencimientoReferencia: null,
+    ultimoMovimientoFecha: p.ultimoMovimientoFecha?.toISOString() ?? null,
+    vencimientoReferencia: p.vencimientoReferencia?.toISOString() ?? null,
   }));
 
   const totalCartera = carteraKpis.totalCartera;
