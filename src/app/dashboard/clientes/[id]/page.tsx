@@ -41,7 +41,15 @@ export default async function ClienteDetallePage({ params }: Props) {
       ventasCount: (a as { ventasCount?: number }).ventasCount ?? 0,
       ventasPagadas: (a as { ventasPagadas?: number }).ventasPagadas ?? 0,
     })),
-    obrasConSaldo: cliente.obrasConSaldo,
+    obrasConSaldo: cliente.obrasConSaldo.map((o) => ({
+      id: o.id,
+      nombre: o.nombre,
+      saldo: o.saldo,
+      estadoSaldo:
+        "estadoSaldo" in o && o.estadoSaldo != null
+          ? (o.estadoSaldo as ClienteFichaDTO["obrasConSaldo"][number]["estadoSaldo"])
+          : "sin_facturar",
+    })),
     ultimoMovimiento: cliente.ultimoMovimiento
       ? {
           fecha: toIsoUtc(cliente.ultimoMovimiento.fecha),

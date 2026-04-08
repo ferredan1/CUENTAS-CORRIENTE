@@ -79,6 +79,7 @@ export function ProveedoresClient({
   const [condicionIva, setCondicionIva] = useState("");
   const [creando, setCreando] = useState(false);
   const [crearError, setCrearError] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
 
   const hayBusqueda = useMemo(() => Boolean(q.trim()), [q]);
 
@@ -173,6 +174,7 @@ export function ProveedoresClient({
       setTelefono("");
       setCondicionIva("");
       setMostrarDatosExtra(false);
+      setFormOpen(false);
       abortRef.current?.abort();
       setProveedores((prev) => [
         ...(prev ?? []),
@@ -207,6 +209,9 @@ export function ProveedoresClient({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className="btn-primary" onClick={() => setFormOpen((v) => !v)}>
+            {formOpen ? "Cancelar" : "Nuevo proveedor"}
+          </button>
           <Link href="/api/proveedores/export" className="btn-secondary">
             Exportar Excel
           </Link>
@@ -216,6 +221,7 @@ export function ProveedoresClient({
         </div>
       </header>
 
+      {formOpen ? (
       <section className="card p-4 sm:p-5">
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Alta rápida</h2>
         <form onSubmit={crearProveedor} className="mt-4 space-y-3">
@@ -298,6 +304,7 @@ export function ProveedoresClient({
           </p>
         ) : null}
       </section>
+      ) : null}
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
@@ -433,7 +440,7 @@ export function ProveedoresClient({
                       <p className="empty-state-hint">
                         {debouncedQ.trim() || filtroRapido !== "todos"
                           ? "Probá otra búsqueda o cambiá el filtro."
-                          : "Creá tu primer proveedor con el alta rápida para empezar a registrar compras y pagos."}
+                          : "Creá tu primer proveedor con «Nuevo proveedor» para empezar a registrar compras y pagos."}
                       </p>
                     </div>
                   </td>

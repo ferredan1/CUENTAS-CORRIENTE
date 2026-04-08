@@ -1,17 +1,15 @@
 "use client";
 
 import { ObraMovimientosClient } from "@/app/dashboard/obras/[id]/ObraMovimientosClient";
-import { etiquetaArchivoConComprobante, formatFechaCorta, formatMoneda } from "@/lib/format";
+import { formatFechaCorta, formatMoneda } from "@/lib/format";
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BorrarClienteButton } from "@/components/BorrarClienteButton";
 import { BorrarObraButton } from "@/components/BorrarObraButton";
 import { BorrarComprobanteButton } from "./BorrarComprobanteButton";
 import { MarcarComprobanteButton } from "./MarcarComprobanteButton";
 import { DatosClienteForm } from "./DatosClienteForm";
 import { NuevaObraForm } from "./NuevaObraForm";
-import { PagoInlineResumenClient } from "./PagoInlineResumenClient";
-
 type ArchivoDTO = {
   id: string;
   nombre: string | null;
@@ -22,7 +20,12 @@ type ArchivoDTO = {
   ventasPagadas: number;
 };
 
-type ObraSaldoDTO = { id: string; nombre: string; saldo: number };
+type ObraSaldoDTO = {
+  id: string;
+  nombre: string;
+  saldo: number;
+  estadoSaldo: "sin_facturar" | "cerrado_facturado" | "enviado_pendiente_pago";
+};
 
 export type ClienteFichaDTO = {
   id: string;
@@ -64,7 +67,27 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
-  const [tab, setTab] = useState<TabId>("resumen");
+  async function patchEstadoSaldoObra(obraId: string, estadoSaldo: ObraSaldoDTO["estadoSaldo"]) {
+    try {
+      const res = await fetch(`/api/obras/${obraId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ estadoSaldo }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "No se pudo actualizar");
+      window.location.reload();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Error");
+    }
+  }
+  const [tab, setTab] = useState<TabId>(() => {
+    if (typeof window === "undefined") return "resumen";
+    const raw = window.location.hash.replace(/^#/, "").trim();
+    if (!raw) return "resumen";
+    const found = TABS.find((t) => t.id === raw);
+    return found?.id ?? "resumen";
+  });
 
   const ultimoPdf = c.archivos[0] ?? null;
   const tabsWithCounts = useMemo(() => {
@@ -78,14 +101,6 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
       count: counts[t.id],
     }));
   }, [c.archivos.length, c.movimientosCount, c.obrasConSaldo.length]);
-
-  /** useLayoutEffect evita carrera con el efecto del hash: antes leíamos #tab tarde y replaceState("#resumen") pisaba la URL. */
-  useLayoutEffect(() => {
-    const raw = window.location.hash.replace(/^#/, "").trim();
-    if (!raw) return;
-    const found = TABS.find((t) => t.id === raw);
-    if (found) setTab(found.id);
-  }, []);
 
   useEffect(() => {
     const nextHash = `#${tab}`;
@@ -159,10 +174,10 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link href={`/dashboard/upload?clienteId=${c.id}`} className="btn-secondary">
-            Subir PDF
+            Nueva venta
           </Link>
           <Link href={`/dashboard/carga?clienteId=${c.id}`} className="btn-primary">
-            Cargar pago
+            Registrar cobro
           </Link>
           <Link
             href={`/dashboard/clientes/${c.id}/estado-cuenta`}
@@ -182,80 +197,6 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
           </div>
         </div>
       </header>
-
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="card-compact">
-          <p className="text-[0.65rem] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Saldo
-          </p>
-          <p
-            className={`mt-1 font-mono text-3xl font-bold tabular-nums sm:text-4xl ${
-              c.saldo > 0
-                ? "text-rose-700 dark:text-rose-300"
-                : c.saldo < 0
-                  ? "text-emerald-700 dark:text-emerald-300"
-                  : "text-slate-800 dark:text-slate-100"
-            }`}
-          >
-            {formatMoneda(c.saldo)}
-          </p>
-          <p className="mt-2 flex flex-wrap items-center gap-2">
-            <span className={badgeSaldo.className}>{badgeSaldo.text}</span>
-            {badgeCobranza ? <span className={badgeCobranza.className}>{badgeCobranza.text}</span> : null}
-          </p>
-        </div>
-        <div className="card-compact">
-          <p className="text-[0.65rem] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Antigüedad deuda
-          </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            +90d:{" "}
-            <span className="font-mono text-base font-semibold text-slate-800 dark:text-slate-200">
-              {formatMoneda(c.antiguedadDeuda.masde90)}
-            </span>
-          </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            60–90:{" "}
-            <span className="font-mono text-base font-semibold text-slate-800 dark:text-slate-200">
-              {formatMoneda(c.antiguedadDeuda.dias60a90)}
-            </span>
-          </p>
-        </div>
-        <div className="card-compact">
-          <p className="text-[0.65rem] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Último pago
-          </p>
-          {c.ultimoPago ? (
-            <>
-              <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
-                {formatMoneda(c.ultimoPago.total)}
-              </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                {formatFechaCorta(c.ultimoPago.fecha)}
-              </p>
-            </>
-          ) : (
-            <p className="mt-1 text-sm font-medium text-rose-700 dark:text-rose-400">Nunca pagó</p>
-          )}
-        </div>
-        <div className="card-compact">
-          <p className="text-[0.65rem] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Promedio de pago
-          </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            {c.promedioDiasPago != null ? (
-              <>
-                <span className="font-mono text-2xl font-bold tabular-nums text-slate-900 dark:text-slate-100">
-                  {c.promedioDiasPago}
-                </span>{" "}
-                días
-              </>
-            ) : (
-              "—"
-            )}
-          </p>
-        </div>
-      </section>
 
       <div className="segmented flex w-full min-w-0 max-w-3xl touch-pan-x">
         {tabsWithCounts.map((t) => (
@@ -427,8 +368,6 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
             </div>
           </section>
 
-          <PagoInlineResumenClient clienteId={c.id} />
-
           <section className="space-y-3">
             <div className="section-header border-0 pb-0">
               <h2 className="section-title">Movimientos sin obra</h2>
@@ -499,9 +438,7 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
                       <td className="whitespace-nowrap text-slate-600">
                         {formatFechaCorta(a.createdAt)}
                       </td>
-                      <td className="max-w-[min(100%,24rem)] truncate font-medium">
-                        {etiquetaArchivoConComprobante(a.nombre, a.comprobante)}
-                      </td>
+                      <td className="max-w-[180px] truncate font-medium">{a.nombre ?? "—"}</td>
                       <td className="text-slate-600">{a.obra?.nombre ?? "—"}</td>
                       <td>
                         <a
@@ -620,6 +557,7 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
               <thead>
                 <tr>
                   <th>Nombre</th>
+                  <th className="w-56">Estado saldo</th>
                   <th className="w-36 text-right">Saldo</th>
                   <th className="w-40"> </th>
                   <th className="w-28 text-right"> </th>
@@ -629,6 +567,17 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
                 {c.obrasConSaldo.map((o) => (
                   <tr key={o.id}>
                     <td className="font-medium text-slate-900">{o.nombre}</td>
+                    <td>
+                      <select
+                        className="select-app text-sm"
+                        value={o.estadoSaldo}
+                        onChange={(e) => void patchEstadoSaldoObra(o.id, e.target.value as ObraSaldoDTO["estadoSaldo"])}
+                      >
+                        <option value="sin_facturar">SIN FACTURAR</option>
+                        <option value="cerrado_facturado">CERRADO / FACTURADO</option>
+                        <option value="enviado_pendiente_pago">ENVIADO - PENDIENTE DE PAGO</option>
+                      </select>
+                    </td>
                     <td
                       className={`text-right font-mono tabular-nums font-medium ${
                         o.saldo > 0 ? "text-rose-700" : "text-emerald-700"
@@ -655,7 +604,7 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
                 ))}
                 {c.obrasConSaldo.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="py-10 text-center text-slate-500">
+                    <td colSpan={5} className="py-10 text-center text-slate-500">
                       Sin obras. Creá una arriba.
                     </td>
                   </tr>

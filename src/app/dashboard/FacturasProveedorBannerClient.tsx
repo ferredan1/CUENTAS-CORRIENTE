@@ -2,7 +2,6 @@
 
 import { formatMoneda } from "@/lib/format";
 import Link from "next/link";
-import { useMemo } from "react";
 
 function startOfTodayLocal(): Date {
   const d = new Date();
@@ -10,80 +9,68 @@ function startOfTodayLocal(): Date {
   return d;
 }
 
-function addDays(d: Date, days: number): Date {
-  const x = new Date(d);
-  x.setDate(x.getDate() + days);
-  return x;
+function parseFechaLocal(v: Date | string | null | undefined): Date | null {
+  if (v == null) return null;
+  const d = v instanceof Date ? new Date(v.getTime()) : new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
-type Item = { total: unknown; fechaVencimiento: Date | null };
+function labelEstado(fechaVenc: Date, hoy: Date): string {
+  const t0 = hoy.getTime();
+  const t1 = fechaVenc.getTime();
+  if (t1 < t0) return "vencida";
+  if (t1 === t0) return "vence hoy";
+  const dias = Math.round((t1 - t0) / (1000 * 60 * 60 * 24));
+  if (dias === 1) return "vence en 1 día";
+  return `vence en ${dias} días`;
+}
+
+export type Item = { total: number; fechaVencimiento: Date | string | null; proveedorNombre: string };
 
 export function FacturasProveedorBannerClient({ items }: { items: Item[] }) {
-  const { vencidosMonto, porVencerMonto, vencidosN, porVencerN, minDiasParaVencer } = useMemo(() => {
-    const hoy = startOfTodayLocal();
-    const hasta = addDays(hoy, 3);
-    let vM = 0;
-    let pM = 0;
-    let vN = 0;
-    let pN = 0;
-    let minDias: number | null = null;
-    for (const row of items) {
-      if (!row.fechaVencimiento) continue;
-      const v = new Date(row.fechaVencimiento);
-      v.setHours(0, 0, 0, 0);
-      if (Number.isNaN(v.getTime())) continue;
-      const t = Number(row.total ?? 0);
-      if (v < hoy) {
-        vM += t;
-        vN += 1;
-      } else if (v <= hasta) {
-        pM += t;
-        pN += 1;
-        const dias = Math.round((v.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
-        if (minDias == null || dias < minDias) minDias = dias;
-      }
-    }
-    return {
-      vencidosMonto: vM,
-      porVencerMonto: pM,
-      vencidosN: vN,
-      porVencerN: pN,
-      minDiasParaVencer: minDias,
-    };
-  }, [items]);
+  if (items.length === 0) return null;
 
-  if (vencidosN === 0 && porVencerN === 0) return null;
+  const hoy = startOfTodayLocal();
+  const lineas = items
+    .map((row) => {
+      const fv = parseFechaLocal(row.fechaVencimiento);
+      if (!fv) return null;
+      const monto = Number(row.total ?? 0);
+      const nombre = row.proveedorNombre?.trim() || "Proveedor";
+      return { nombre, monto, fv, estado: labelEstado(fv, hoy) };
+    })
+    .filter((x): x is NonNullable<typeof x> => x != null);
+
+  if (lineas.length === 0) return null;
 
   return (
     <section className="card-compact">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Facturas proveedores</h2>
-          <p className="mt-1 text-sm text-slate-700">
-            {vencidosN > 0 ? (
-              <>
-                <span className="font-semibold text-rose-700">{vencidosN}</span> vencida(s) (
-                {formatMoneda(vencidosMonto)})
-              </>
-            ) : (
-              <span className="text-slate-600">Sin vencidas</span>
-            )}
-            {" · "}
-            {porVencerN > 0 ? (
-              <>
-                <span className="font-semibold text-amber-900">{porVencerN}</span>{" "}
-                {minDiasParaVencer === 0
-                  ? "vencen hoy"
-                  : minDiasParaVencer === 1
-                    ? "vencen en 1 día"
-                    : `vencen en ${minDiasParaVencer ?? 0} días`}{" "}
-                (
-                {formatMoneda(porVencerMonto)})
-              </>
-            ) : (
-              <span className="text-slate-600">Nada por vencer en 3 días</span>
-            )}
-          </p>
+          <ul className="mt-2 space-y-1.5 text-sm text-slate-800 dark:text-slate-200">
+            {lineas.map((l, i) => (
+              <li key={`${l.nombre}-${l.fv.toISOString()}-${i}`} className="break-words">
+                <span className="font-medium text-slate-900 dark:text-slate-100">{l.nombre}</span>
+                <span className="text-slate-400 dark:text-slate-500"> — </span>
+                <span className="font-mono tabular-nums">{formatMoneda(l.monto)}</span>
+                <span className="text-slate-400 dark:text-slate-500"> — </span>
+                <span
+                  className={
+                    l.estado === "vencida"
+                      ? "font-medium text-rose-700 dark:text-rose-400"
+                      : l.estado === "vence hoy"
+                        ? "font-medium text-amber-900 dark:text-amber-200"
+                        : "text-slate-600 dark:text-slate-400"
+                  }
+                >
+                  {l.estado}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/dashboard/proveedores" className="btn-secondary">

@@ -1,15 +1,14 @@
 import type { ClienteTablaRow } from "@/components/clientes/ClientesTable";
-import { DashboardPrimaryActions } from "@/components/dashboard/DashboardPrimaryActions";
 import { getServerUserId } from "@/lib/get-server-user-id";
 import {
   listarClientesParaTabla,
   parseFiltroClientesTabla,
   parseOrdenClientesTabla,
 } from "@/services/clientes";
-import { NuevoClienteForm } from "../NuevoClienteForm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { DashboardClientesClient } from "../DashboardClientesClient";
+import { NuevoClienteToggle } from "./NuevoClienteToggle";
 
 function toTablaRow(
   c: Awaited<ReturnType<typeof listarClientesParaTabla>>["clientes"][number],
@@ -60,20 +59,13 @@ export default async function ClientesPage({
             Filtros rápidos, columnas de cobranza y scroll infinito. Orden y filtro se aplican en el servidor.
           </p>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <DashboardPrimaryActions includeNuevoCliente={false} />
-          <Link href="/api/clientes/export" className="btn-secondary">
+        <div className="flex flex-wrap items-center gap-2">
+          <NuevoClienteToggle />
+          <Link href="/api/clientes/export" className="btn-secondary" prefetch={false}>
             Exportar Excel
           </Link>
         </div>
       </header>
-
-      <section id="alta-rapida-cliente">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Alta rápida</h2>
-        <div className="mt-2">
-          <NuevoClienteForm variant="compact" />
-        </div>
-      </section>
 
       <DashboardClientesClient
         initialQ={sp.q?.trim() ?? ""}
@@ -81,7 +73,6 @@ export default async function ClientesPage({
         initialOrderBy={orderBy}
         initialClientes={clientes.map(toTablaRow)}
         initialNextCursor={nextCursor}
-        showCargarPagoButton={false}
       />
     </div>
   );

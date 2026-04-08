@@ -55,12 +55,17 @@ export async function listarFacturasProveedorVencimientos(days = 3) {
       liquidadoPorPagoId: null,
       fechaVencimiento: { not: null, lte: hasta },
     },
-    select: { total: true, fechaVencimiento: true },
+    select: {
+      total: true,
+      fechaVencimiento: true,
+      proveedor: { select: { nombre: true } },
+    },
     orderBy: { fechaVencimiento: "asc" },
     take: 3000,
   });
   return rows.map((r) => ({
     total: Number(r.total),
     fechaVencimiento: r.fechaVencimiento,
+    proveedorNombre: r.proveedor.nombre,
   }));
 }
