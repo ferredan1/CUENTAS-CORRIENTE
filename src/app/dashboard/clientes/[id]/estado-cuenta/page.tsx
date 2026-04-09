@@ -1,7 +1,9 @@
 import { saldoDesdeTotalesPorTipo } from "@/domain/saldos";
+import { armarMensajeEstadoCuentaWhatsapp } from "@/lib/estado-cuenta-whatsapp-message";
 import { formatFechaCorta, formatMoneda } from "@/lib/format";
 import { parseQueryDayEnd, parseQueryDayStart } from "@/lib/dates";
 import { getServerUserId } from "@/lib/get-server-user-id";
+import { whatsappUrlWithBody } from "@/lib/whatsapp";
 import { prisma } from "@/lib/prisma";
 import { listarMovimientos } from "@/services/movimientos";
 import Link from "next/link";
@@ -85,6 +87,42 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
     return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 4 }).format(n);
   };
 
+  let etiquetaFiltroObra: string;
+  if (sinObra) {
+    etiquetaFiltroObra = "Solo movimientos sin obra asignada";
+  } else if (obraId) {
+    const nom = obras.find((o) => o.id === obraId)?.nombre;
+    etiquetaFiltroObra = `Obra: ${nom ?? "—"}`;
+  } else {
+    etiquetaFiltroObra = "Todas las obras (cada ítem indica obra si corresponde)";
+  }
+
+  const incluirObraEnLineas = !sinObra && !obraId;
+
+  const mensajeWhatsapp = armarMensajeEstadoCuentaWhatsapp({
+    nombreCliente: cliente.nombre,
+    desde: desde ?? null,
+    hasta: hasta ?? null,
+    etiquetaFiltroObra,
+    saldoAnterior,
+    movimientos: movimientosConSaldo.map((m) => ({
+      fecha: m.fecha instanceof Date ? m.fecha : new Date(m.fecha),
+      tipo: m.tipo,
+      comprobante: m.comprobante,
+      descripcion: m.descripcion,
+      cantidad: Number(m.cantidad),
+      precioUnitario: Number(m.precioUnitario),
+      total: Number(m.total),
+      saldo: m.saldo,
+      obraNombre: m.obra?.nombre ?? null,
+    })),
+    totalVentas: totalVentasPeriodo,
+    totalPagos: totalPagosPeriodo,
+    incluirObraEnLineas,
+  });
+
+  const whatsappHref = whatsappUrlWithBody(cliente.telefono, mensajeWhatsapp);
+
   return (
     <div className="page-shell space-y-4">
       <style>{`
@@ -112,7 +150,7 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
         </p>
       </header>
 
-      <EstadoCuentaControls obras={obras} />
+      <EstadoCuentaControls obras={obras} whatsappHref={whatsappHref} />
 
       <section className="card-compact space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -142,7 +180,6 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
             <thead>
               <tr>
                 <th className="w-28">Fecha</th>
-                <th className="w-28">Tipo</th>
                 <th className="w-44">Comprobante</th>
                 <th>Descripción</th>
                 <th className="w-20 text-right">Cant.</th>
@@ -153,17 +190,19 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
             <tbody>
               {movimientosConSaldo.map((m) => (
                 <tr key={m.id}>
-                  <td className="whitespace-nowrap text-slate-600">{formatFechaCorta(m.fecha)}</td>
-                  <td className="capitalize text-slate-700">{m.tipo}</td>
-                  <td className="font-mono text-xs tabular-nums">{m.comprobante ?? "—"}</td>
-                  <td className="text-slate-700">{m.descripcion}</td>
-                  <td className="text-right font-mono text-xs tabular-nums text-slate-600">{fmtCant(m)}</td>
-                  <td className="text-right font-mono tabular-nums text-slate-700">
+                  <td className="whitespace-nowrap text-slate-600 dark:text-slate-300">{formatFechaCorta(m.fecha)}</td>
+                  <td className="font-mono text-xs tabular-nums text-slate-700 dark:text-slate-200">{m.comprobante ?? "—"}</td>
+                  <td className="text-slate-800 dark:text-slate-100">
+                    <span className="capitalize text-slate-500 dark:text-slate-400">[{m.tipo}]</span>{" "}
+                    {m.descripcion}
+                  </td>
+                  <td className="text-right font-mono text-xs tabular-nums text-slate-600 dark:text-slate-300">{fmtCant(m)}</td>
+                  <td className="text-right font-mono tabular-nums text-slate-700 dark:text-slate-200">
                     {m.tipo === "pago" || m.tipo === "devolucion" ? "—" : formatMoneda(Number(m.precioUnitario))}
                   </td>
                   <td
                     className={`text-right font-mono tabular-nums ${
-                      m.tipo === "pago" || m.tipo === "devolucion" ? "text-emerald-700" : "text-slate-800"
+                      m.tipo === "pago" || m.tipo === "devolucion" ? "text-emerald-700 dark:text-emerald-400" : "text-slate-800 dark:text-slate-100"
                     }`}
                   >
                     {m.tipo === "pago" || m.tipo === "devolucion" ? "−" : ""}
@@ -173,7 +212,7 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
               ))}
               {movimientosConSaldo.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-500">
+                  <td colSpan={6} className="py-12 text-center text-slate-500 dark:text-slate-400">
                     Sin movimientos para este rango.
                   </td>
                 </tr>
@@ -181,10 +220,10 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
             </tbody>
             {movimientos.length > 0 ? (
               <tfoot>
-                <tr className="border-t-2 border-slate-300 bg-slate-50/60 font-medium">
+                <tr className="border-t-2 border-slate-300 bg-slate-50/60 font-medium dark:border-slate-600 dark:bg-slate-900/50">
                   <td
-                    colSpan={5}
-                    className="py-3 pr-4 text-right text-xs uppercase tracking-wide text-slate-500"
+                    colSpan={4}
+                    className="py-3 pr-4 text-right text-xs uppercase tracking-wide text-slate-600 dark:text-slate-400"
                   >
                     Totales del período
                   </td>

@@ -149,9 +149,6 @@ export function ClientesTable({
                   <td className="max-w-0 align-top p-2 sm:p-3">
                     <EstadoGestionCuentaCell
                       clienteId={c.id}
-                      nombreCliente={c.nombre}
-                      telefono={c.telefono}
-                      saldo={c.saldo}
                       estadoCliente={c.estadoGestionCuenta}
                       obras={c.obrasEstado}
                       onGuardado={onEstadoGestionGuardado}
