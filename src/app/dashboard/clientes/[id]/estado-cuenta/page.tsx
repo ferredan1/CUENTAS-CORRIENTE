@@ -71,12 +71,7 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
         </p>
       </header>
 
-      <EstadoCuentaControls
-        obras={obras}
-        clienteId={cliente.id}
-        telefono={cliente.telefono}
-        clienteNombre={cliente.nombre}
-      />
+      <EstadoCuentaControls obras={obras} />
 
       <section className="card-compact space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
