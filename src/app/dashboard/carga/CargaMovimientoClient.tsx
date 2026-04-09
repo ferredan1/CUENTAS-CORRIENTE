@@ -2,7 +2,6 @@
 
 import { markPagoCargadoForNextDashboardPage } from "@/components/dashboard/PagoCargadoFlash";
 import { formatMoneda } from "@/lib/format";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -376,9 +375,6 @@ export function CargaMovimientoClient({
         <button type="submit" disabled={loading} className="btn-primary">
           {loading ? "Guardando…" : "Guardar pago"}
         </button>
-        <Link href="/dashboard" className="btn-secondary">
-          Volver al panel
-        </Link>
       </div>
     </form>
   );

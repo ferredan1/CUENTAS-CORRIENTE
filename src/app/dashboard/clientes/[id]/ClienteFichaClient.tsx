@@ -469,8 +469,7 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
       {tab === "movimientos" && (
         <div className="space-y-4">
           <p className="text-sm text-slate-600">
-            Todos los movimientos del cliente (todas las obras y sin obra). Exportá o cargá uno nuevo
-            desde acá.
+            Todos los movimientos del cliente (todas las obras y sin obra). Podés registrar cobros desde acá.
           </p>
           <ObraMovimientosClient todoCliente clienteId={c.id} saldoObra={c.saldo} />
         </div>

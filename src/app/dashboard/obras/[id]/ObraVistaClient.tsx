@@ -3,9 +3,8 @@
 import { BorrarComprobanteButton } from "@/app/dashboard/clientes/[id]/BorrarComprobanteButton";
 import { etiquetaArchivoConComprobante, formatFechaCorta } from "@/lib/format";
 import Link from "next/link";
-import { useRef } from "react";
 import { BorrarObraButton } from "@/components/BorrarObraButton";
-import { ObraMovimientosClient, type ObraMovimientosHandle } from "./ObraMovimientosClient";
+import { ObraMovimientosClient } from "./ObraMovimientosClient";
 
 type ArchivoRow = {
   id: string;
@@ -28,8 +27,6 @@ type Props = {
 };
 
 export function ObraVistaClient({ obra, archivos }: Props) {
-  const gridRef = useRef<ObraMovimientosHandle>(null);
-
   return (
     <>
       <header className="flex flex-col gap-4 border-b border-slate-200/80 pb-6 sm:flex-row sm:items-start sm:justify-between">
@@ -60,15 +57,8 @@ export function ObraVistaClient({ obra, archivos }: Props) {
             href={`/dashboard/carga?clienteId=${obra.clienteId}&obraId=${obra.id}`}
             className="btn-primary"
           >
-            Cargar pago
+            Registrar cobro
           </Link>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => gridRef.current?.exportExcel()}
-          >
-            Exportar
-          </button>
           <div className="ml-1 border-l border-slate-200 pl-2">
             <BorrarObraButton obraId={obra.id} nombre={obra.nombre} clienteId={obra.clienteId} />
           </div>
@@ -127,13 +117,7 @@ export function ObraVistaClient({ obra, archivos }: Props) {
         </div>
       </section>
 
-      <ObraMovimientosClient
-        ref={gridRef}
-        obraId={obra.id}
-        clienteId={obra.clienteId}
-        saldoObra={obra.saldoObra}
-        toolbarExport={false}
-      />
+      <ObraMovimientosClient obraId={obra.id} clienteId={obra.clienteId} saldoObra={obra.saldoObra} />
     </>
   );
 }

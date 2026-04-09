@@ -6,14 +6,7 @@ import { acumularPorTipo, saldoDesdeTotalesPorTipo, totalesPendientesDesdeFilas 
 import type { TipoMovimiento } from "@/types/domain";
 import Link from "next/link";
 import { ModalAplicarPago } from "@/components/pagos/ModalAplicarPago";
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type MovRow = {
   id: string;
@@ -121,10 +114,6 @@ function buildSegments(rows: MovRow[]): Segment[] {
   return out;
 }
 
-export type ObraMovimientosHandle = {
-  exportExcel: () => void;
-};
-
 export type ObraMovimientosClientProps =
   | {
       obraId: string;
@@ -132,30 +121,25 @@ export type ObraMovimientosClientProps =
       saldoObra: number;
       sinObra?: false;
       todoCliente?: false;
-      toolbarExport?: boolean;
     }
   | {
       clienteId: string;
       saldoObra: number;
       sinObra: true;
       todoCliente?: false;
-      toolbarExport?: boolean;
     }
   | {
       clienteId: string;
       saldoObra: number;
       todoCliente: true;
-      toolbarExport?: boolean;
     };
 
-export const ObraMovimientosClient = forwardRef<ObraMovimientosHandle, ObraMovimientosClientProps>(
-  function ObraMovimientosClient(props, ref) {
+export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
     const todoCliente = "todoCliente" in props && props.todoCliente === true;
     const sinObra = !todoCliente && "sinObra" in props && props.sinObra === true;
     const obraId = !todoCliente && !sinObra ? props.obraId : undefined;
     const clienteId = props.clienteId;
     const saldoInicial = props.saldoObra;
-    const toolbarExport = props.toolbarExport !== false;
     const canDeleteMov = true;
 
     const [rows, setRows] = useState<MovRow[]>([]);
@@ -351,35 +335,6 @@ export const ObraMovimientosClient = forwardRef<ObraMovimientosHandle, ObraMovim
         setSavingId(null);
       }
     }
-
-    const exportExcel = useCallback(async () => {
-      const XLSX = await import("xlsx");
-      const ws = XLSX.utils.json_to_sheet(
-        rows.map((r) => ({
-          Fecha: formatFechaCorta(r.fecha),
-          Comprobante: r.comprobante ?? "",
-          Medio: r.medioPago ?? "",
-          "Nº cheque": r.chequeNumero ?? "",
-          "Vto. cheque": r.chequeVencimiento || "",
-          Recibido: r.fechaRecepcion || "",
-          Tipo: r.tipo,
-          Código: r.codigoProducto ?? "",
-          Descripción: r.descripcion,
-          Cantidad: r.cantidad,
-          "Precio unitario": r.precioUnitario,
-          Total: r.total,
-        })),
-      );
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Movimientos");
-      let nombreArchivo = `movimientos-${clienteId}.xlsx`;
-      if (todoCliente) nombreArchivo = `cliente-${clienteId}-todos.xlsx`;
-      else if (sinObra) nombreArchivo = `cliente-${clienteId}-sin-obra.xlsx`;
-      else if (obraId) nombreArchivo = `obra-${obraId}.xlsx`;
-      XLSX.writeFile(wb, nombreArchivo);
-    }, [rows, clienteId, obraId, sinObra, todoCliente]);
-
-    useImperativeHandle(ref, () => ({ exportExcel }), [exportExcel]);
 
     const colCount = (showChequeCols ? 13 : 9) + (showNotasCols ? 1 : 0);
 
@@ -841,17 +796,12 @@ export const ObraMovimientosClient = forwardRef<ObraMovimientosHandle, ObraMovim
             >
               {showNotasCols ? "Ocultar notas" : "Mostrar notas"}
             </button>
-            {toolbarExport && (
-              <button type="button" onClick={() => void exportExcel()} className="btn-secondary text-sm">
-                Exportar Excel
-              </button>
-            )}
             <Link
               href={cargaHref}
               className="btn-primary text-sm"
               title="Registrar cobro del cliente (efectivo, transferencia, tarjeta o cheque)"
             >
-              Cargar pago
+              Registrar cobro
             </Link>
             <button
               type="button"
@@ -1033,7 +983,4 @@ export const ObraMovimientosClient = forwardRef<ObraMovimientosHandle, ObraMovim
         )}
       </div>
     );
-  },
-);
-
-ObraMovimientosClient.displayName = "ObraMovimientosClient";
+}

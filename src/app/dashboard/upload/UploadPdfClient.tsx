@@ -1062,11 +1062,6 @@ export function UploadPdfClient({ initialClienteId, initialObraId }: UploadPdfPr
           </div>
         )}
 
-        <div className="flex flex-wrap gap-3 border-t border-slate-100 pt-5">
-          <Link href="/dashboard" className="btn-secondary">
-            Volver al panel
-          </Link>
-        </div>
       </form>
     </div>
   );
