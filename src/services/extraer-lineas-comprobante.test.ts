@@ -28,6 +28,27 @@ BOTON CONCAVO DEALER 420233 332213
 `.trim();
 
 describe("extraer-lineas-comprobante", () => {
+  it("Dux Factura A: descripción + código alfanum. en línea aparte (F045 / Membranex)", () => {
+    const texto = `
+FACTURA
+Generado por www.duxsoftware.com.ar
+Descripción
+AKAI LAMPARA DE LED ALTA POTENCIA 35W. E27 L/D 7558
+3,004.958,680,0014.876,0321,0018.000,00
+DISCO DE CORTE METAL TYROLIT SECUR DE 178 X 1,6 MM. PLANO
+F045
+25,004.049,590,00101.239,6721,00122.500,00
+`.trim();
+    const items = extraerItemsDelTextoComprobante(texto);
+    const disco = items.find((it) => it.descripcion.includes("TYROLIT"));
+    expect(disco).toBeDefined();
+    expect(disco!.descripcion).toContain("F045");
+    expect(disco!.cantidad).toBe(25);
+    // Subtotal c/IVA → precio unitario efectivo (122.500 / 25), coherente con Factura A Dux.
+    expect(disco!.precioUnitario).toBeCloseTo(4900, 1);
+    expect(items.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("extrae ítem Dux con columna % IVA (5 montos tras cantidad)", () => {
     const items = extraerItemsDelTextoComprobante(TEXTO_MEMBRANEX);
     expect(items).toHaveLength(1);

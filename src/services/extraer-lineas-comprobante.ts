@@ -67,13 +67,16 @@ function esLineaSoloImportesDux(line: string): boolean {
 }
 
 /**
- * Código interno en renglón solo (p. ej. «3568») entre la descripción larga y la línea de importes Dux.
- * Solo dígitos, longitud acotada, para no confundir con texto ni cantidades «1,00».
+ * Código de artículo en renglón solo entre descripción e importes Dux.
+ * - Numérico: «3568»
+ * - Alfanum. tipo proveedor: «F045», «E056C» (letra(s) + dígitos + sufijo corto opcional)
+ * Requiere al menos un dígito para no tomar palabras sueltas.
  */
 function lineaPareceSoloCodigoInterno(line: string): boolean {
   const t = line.trim();
-  if (t.length < 3 || t.length > 12) return false;
-  return /^\d{3,12}$/.test(t);
+  if (t.length < 3 || t.length > 14) return false;
+  if (/^\d{3,12}$/.test(t)) return true;
+  return /^[A-Z]{1,3}\d{2,6}[A-Z0-9]{0,3}$/i.test(t);
 }
 
 function recolectarBloqueDescripcion(lineas: string[], idxImportes: number): string | null {
@@ -85,7 +88,7 @@ function recolectarBloqueDescripcion(lineas: string[], idxImportes: number): str
     if (!L) continue;
     if (esLineaSoloImportesDux(L)) return null;
     const trimmed = L.trim();
-    // Antes que encabezado: códigos «3568» tienen < 5 chars y no deben anular el ítem.
+    // Antes que encabezado: códigos cortos («3568», «F045») no deben anular el ítem.
     if (lineaPareceSoloCodigoInterno(trimmed) && j >= 1) {
       for (let k = j - 1; k >= 0; k--) {
         const prev = lineas[k]!;
