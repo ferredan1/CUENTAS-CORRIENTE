@@ -98,7 +98,6 @@ export function ClientesTable({
         </thead>
         <tbody>
           {rows.map((c) => {
-            const conDeuda = c.saldo > 1e-6;
             const ult =
               c.ultimoMovimientoFecha != null
                 ? formatFechaCorta(
@@ -130,7 +129,7 @@ export function ClientesTable({
                 </td>
                 <td className="w-[7.5rem] shrink-0 p-2 text-right align-top sm:p-3">
                   <span
-                    className={`inline-flex rounded-md px-2 py-0.5 font-mono text-sm tabular-nums font-semibold ${
+                    className={`inline-flex max-w-full items-center rounded-md px-2 py-0.5 font-mono text-sm tabular-nums font-semibold ${
                       c.saldo > 0
                         ? "bg-rose-100/90 text-rose-900 dark:bg-rose-950/40 dark:text-rose-100"
                         : c.saldo < 0
@@ -138,9 +137,13 @@ export function ClientesTable({
                           : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
                     }`}
                   >
-                    {formatMoneda(c.saldo)}
-                    {c.saldo < 0 ? <span className="ml-1 text-[0.65rem] font-normal">a favor</span> : null}
+                    <span className="truncate">{formatMoneda(c.saldo)}</span>
                   </span>
+                  {c.saldo < 0 ? (
+                    <div className="mt-1 text-[0.65rem] font-medium leading-tight text-emerald-700 dark:text-emerald-300">
+                      A favor
+                    </div>
+                  ) : null}
                 </td>
                 <td className="hidden w-[5.5rem] whitespace-nowrap p-2 text-xs text-slate-700 dark:text-slate-300 md:table-cell sm:p-3">
                   {ult}
@@ -157,17 +160,6 @@ export function ClientesTable({
                 ) : null}
                 <td className="align-top p-2 text-right sm:p-3">
                   <div className="flex flex-wrap items-center justify-end gap-1 sm:flex-nowrap">
-                    <Link
-                      href={`/dashboard/carga?clienteId=${encodeURIComponent(c.id)}`}
-                      className={
-                        conDeuda
-                          ? "btn-primary inline-flex min-h-9 shrink-0 items-center px-2.5 py-1.5 text-[0.65rem] sm:h-8 sm:py-0"
-                          : "btn-secondary inline-flex min-h-9 shrink-0 items-center px-2.5 py-1.5 text-[0.65rem] sm:h-8 sm:py-0"
-                      }
-                      prefetch
-                    >
-                      Registrar cobro
-                    </Link>
                     <Link
                       href={`/dashboard/clientes/${c.id}/estado-cuenta`}
                       className="btn-secondary inline-flex min-h-9 shrink-0 items-center px-2.5 py-1.5 text-[0.65rem] sm:h-8 sm:py-0"

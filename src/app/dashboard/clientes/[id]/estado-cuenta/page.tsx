@@ -1,11 +1,7 @@
-import { saldoDesdeTotalesPorTipo } from "@/domain/saldos";
-import { armarMensajeEstadoCuentaWhatsapp } from "@/lib/estado-cuenta-whatsapp-message";
 import { formatFechaCorta, formatMoneda } from "@/lib/format";
-import { parseQueryDayEnd, parseQueryDayStart } from "@/lib/dates";
 import { getServerUserId } from "@/lib/get-server-user-id";
-import { whatsappUrlWithBody } from "@/lib/whatsapp";
 import { prisma } from "@/lib/prisma";
-import { listarMovimientos } from "@/services/movimientos";
+import { cargarDatosEstadoCuenta } from "@/services/estado-cuenta-data";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EstadoCuentaControls } from "./EstadoCuentaControls";
@@ -21,64 +17,25 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
   const { id: clienteId } = await params;
   const sp = await searchParams;
 
-  const desde = parseQueryDayStart(sp.desde ?? null);
-  const hasta = parseQueryDayEnd(sp.hasta ?? null);
-  const obraFiltro = sp.obra?.trim() ?? "";
-  const sinObra = obraFiltro === "__sin_obra__";
-  const obraId = !sinObra && obraFiltro ? obraFiltro : undefined;
-
-  const cliente = await prisma.cliente.findFirst({
-    where: { id: clienteId },
-    select: { id: true, nombre: true, cuit: true, email: true, telefono: true, createdAt: true, updatedAt: true },
+  const data = await cargarDatosEstadoCuenta(clienteId, {
+    desde: sp.desde,
+    hasta: sp.hasta,
+    obra: sp.obra,
   });
-  if (!cliente) redirect("/dashboard");
+  if (!data) redirect("/dashboard");
 
-  const obras = await prisma.obra.findMany({
-    where: { clienteId },
-    select: { id: true, nombre: true },
-    orderBy: { nombre: "asc" },
-  });
-
-  const saldoAnterior =
-    desde != null
-      ? saldoDesdeTotalesPorTipo(
-          Object.fromEntries(
-            (
-              await prisma.movimiento.groupBy({
-                by: ["tipo"],
-                where: {
-                  clienteId,
-                  ...(sinObra ? { obraId: null } : obraId ? { obraId } : {}),
-                  fecha: { lt: desde },
-                },
-                _sum: { total: true },
-              })
-            ).map((g) => [g.tipo, Number(g._sum?.total ?? 0)]),
-          ),
-        )
-      : 0;
-
-  const movimientos = await listarMovimientos({
-    clienteId,
-    ...(sinObra ? { sinObra: true } : obraId ? { obraId } : {}),
-    desde: desde ?? undefined,
-    hasta: hasta ?? undefined,
-    limit: 5000,
-  });
-
-  const acumPorTipo: Record<string, number> = {};
-  const movimientosConSaldo = movimientos.map((m) => {
-    acumPorTipo[m.tipo] = (acumPorTipo[m.tipo] ?? 0) + Number(m.total);
-    const saldo = saldoAnterior + saldoDesdeTotalesPorTipo(acumPorTipo);
-    return { ...m, saldo };
-  });
-
-  const totalVentasPeriodo = movimientos
-    .filter((m) => m.tipo === "venta" || m.tipo === "ajuste")
-    .reduce((s, m) => s + Number(m.total), 0);
-  const totalPagosPeriodo = movimientos
-    .filter((m) => m.tipo === "pago" || m.tipo === "devolucion")
-    .reduce((s, m) => s + Number(m.total), 0);
+  const {
+    cliente,
+    obras,
+    desde,
+    hasta,
+    sinObra,
+    obraId,
+    saldoAnterior,
+    movimientosConSaldo,
+    totalVentasPeriodo,
+    totalPagosPeriodo,
+  } = data;
 
   const fmtCant = (m: (typeof movimientosConSaldo)[number]) => {
     const n = Number(m.cantidad);
@@ -86,42 +43,6 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
     if (m.tipo === "pago" || m.tipo === "devolucion") return "—";
     return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 4 }).format(n);
   };
-
-  let etiquetaFiltroObra: string;
-  if (sinObra) {
-    etiquetaFiltroObra = "Solo movimientos sin obra asignada";
-  } else if (obraId) {
-    const nom = obras.find((o) => o.id === obraId)?.nombre;
-    etiquetaFiltroObra = `Obra: ${nom ?? "—"}`;
-  } else {
-    etiquetaFiltroObra = "Todas las obras (cada ítem indica obra si corresponde)";
-  }
-
-  const incluirObraEnLineas = !sinObra && !obraId;
-
-  const mensajeWhatsapp = armarMensajeEstadoCuentaWhatsapp({
-    nombreCliente: cliente.nombre,
-    desde: desde ?? null,
-    hasta: hasta ?? null,
-    etiquetaFiltroObra,
-    saldoAnterior,
-    movimientos: movimientosConSaldo.map((m) => ({
-      fecha: m.fecha instanceof Date ? m.fecha : new Date(m.fecha),
-      tipo: m.tipo,
-      comprobante: m.comprobante,
-      descripcion: m.descripcion,
-      cantidad: Number(m.cantidad),
-      precioUnitario: Number(m.precioUnitario),
-      total: Number(m.total),
-      saldo: m.saldo,
-      obraNombre: m.obra?.nombre ?? null,
-    })),
-    totalVentas: totalVentasPeriodo,
-    totalPagos: totalPagosPeriodo,
-    incluirObraEnLineas,
-  });
-
-  const whatsappHref = whatsappUrlWithBody(cliente.telefono, mensajeWhatsapp);
 
   return (
     <div className="page-shell space-y-4">
@@ -150,7 +71,12 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
         </p>
       </header>
 
-      <EstadoCuentaControls obras={obras} whatsappHref={whatsappHref} />
+      <EstadoCuentaControls
+        obras={obras}
+        clienteId={cliente.id}
+        telefono={cliente.telefono}
+        clienteNombre={cliente.nombre}
+      />
 
       <section className="card-compact space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -172,7 +98,7 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
               </span>
             </p>
           ) : null}
-          <p className="text-xs text-slate-500">{movimientos.length} movimientos</p>
+          <p className="text-xs text-slate-500">{movimientosConSaldo.length} movimientos</p>
         </div>
 
         <div className="table-shell">
@@ -202,7 +128,9 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
                   </td>
                   <td
                     className={`text-right font-mono tabular-nums ${
-                      m.tipo === "pago" || m.tipo === "devolucion" ? "text-emerald-700 dark:text-emerald-400" : "text-slate-800 dark:text-slate-100"
+                      m.tipo === "pago" || m.tipo === "devolucion"
+                        ? "text-emerald-700 dark:text-emerald-400"
+                        : "text-slate-800 dark:text-slate-100"
                     }`}
                   >
                     {m.tipo === "pago" || m.tipo === "devolucion" ? "−" : ""}
@@ -218,7 +146,7 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
                 </tr>
               ) : null}
             </tbody>
-            {movimientos.length > 0 ? (
+            {movimientosConSaldo.length > 0 ? (
               <tfoot>
                 <tr className="border-t-2 border-slate-300 bg-slate-50/60 font-medium dark:border-slate-600 dark:bg-slate-900/50">
                   <td
@@ -241,4 +169,3 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
     </div>
   );
 }
-

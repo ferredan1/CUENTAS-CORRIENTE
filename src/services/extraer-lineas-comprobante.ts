@@ -67,16 +67,16 @@ function esLineaSoloImportesDux(line: string): boolean {
 }
 
 function recolectarBloqueDescripcion(lineas: string[], idxImportes: number): string | null {
-  const partes: string[] = [];
+  // En Dux, la gran mayoría de ítems tiene descripción en la línea inmediata anterior
+  // a los importes. Tomar un bloque completo hacia arriba puede fusionar ítems vecinos.
   for (let j = idxImportes - 1; j >= 0; j--) {
     const L = lineas[j]!;
     if (!L) continue;
-    if (lineaPareceEncabezadoOlegal(L)) break;
-    if (esLineaSoloImportesDux(L)) break;
-    partes.unshift(L.trim());
+    if (lineaPareceEncabezadoOlegal(L)) return null;
+    if (esLineaSoloImportesDux(L)) return null;
+    return L.trim();
   }
-  if (partes.length === 0) return null;
-  return partes.join(" ");
+  return null;
 }
 
 /** Reservado por compatibilidad con la API de extracción (sin inferencia de SKU). */

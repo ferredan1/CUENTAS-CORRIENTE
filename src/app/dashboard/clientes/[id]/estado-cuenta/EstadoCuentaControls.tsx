@@ -1,6 +1,7 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { whatsappUrl } from "@/lib/whatsapp";
+import { type ReadonlyURLSearchParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 function pickDate(sp: URLSearchParams, key: string): string {
@@ -8,16 +9,37 @@ function pickDate(sp: URLSearchParams, key: string): string {
   return v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : "";
 }
 
+function pdfQueryFromSearchParams(sp: ReadonlyURLSearchParams): string {
+  const q = new URLSearchParams();
+  const desde = sp.get("desde");
+  const hasta = sp.get("hasta");
+  const obra = sp.get("obra");
+  if (desde && /^\d{4}-\d{2}-\d{2}$/.test(desde)) q.set("desde", desde);
+  if (hasta && /^\d{4}-\d{2}-\d{2}$/.test(hasta)) q.set("hasta", hasta);
+  if (obra) q.set("obra", obra);
+  return q.toString();
+}
+
+function safePdfBaseName(nombre: string): string {
+  return nombre
+    .replace(/[^\w\s.-]/gi, "_")
+    .replace(/\s+/g, "_")
+    .slice(0, 48);
+}
+
 type ObraOpt = { id: string; nombre: string };
 const OBRA_SIN_OBRA = "__sin_obra__";
 
 export function EstadoCuentaControls({
   obras,
-  whatsappHref,
+  clienteId,
+  telefono,
+  clienteNombre,
 }: {
   obras: ObraOpt[];
-  /** wa.me con texto prearmado en servidor; null = sin teléfono o no enviable */
-  whatsappHref: string | null;
+  clienteId: string;
+  telefono: string | null;
+  clienteNombre: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -35,6 +57,7 @@ export function EstadoCuentaControls({
   const [desde, setDesde] = useState(initial.desde);
   const [hasta, setHasta] = useState(initial.hasta);
   const [obra, setObra] = useState(initial.obra);
+  const [waBusy, setWaBusy] = useState(false);
 
   function aplicar() {
     const next = new URLSearchParams(sp.toString());
@@ -46,6 +69,68 @@ export function EstadoCuentaControls({
     else next.delete("obra");
     router.push(`${pathname}?${next.toString()}`);
     router.refresh();
+  }
+
+  async function enviarPdfWhatsapp() {
+    const qs = pdfQueryFromSearchParams(sp);
+    const path = `/api/clientes/${encodeURIComponent(clienteId)}/estado-cuenta/pdf${qs ? `?${qs}` : ""}`;
+    setWaBusy(true);
+    try {
+      const res = await fetch(path, { credentials: "same-origin" });
+      if (!res.ok) {
+        const errText = res.status === 404 ? "Cliente no encontrado." : `Error ${res.status}`;
+        window.alert(errText);
+        return;
+      }
+      const blob = await res.blob();
+      const base = safePdfBaseName(clienteNombre) || "cliente";
+      const filename = `estado-cuenta-${base}.pdf`;
+      const file = new File([blob], filename, { type: "application/pdf" });
+
+      const canShareFiles =
+        typeof navigator !== "undefined" &&
+        typeof navigator.canShare === "function" &&
+        navigator.canShare({ files: [file] });
+
+      if (canShareFiles && typeof navigator.share === "function") {
+        try {
+          await navigator.share({
+            files: [file],
+            title: "Estado de cuenta",
+            text: clienteNombre,
+          });
+        } catch (e) {
+          if (e instanceof DOMException && e.name === "AbortError") return;
+          downloadBlob(blob, filename);
+          openWhatsappFallback();
+        }
+        return;
+      }
+
+      downloadBlob(blob, filename);
+      openWhatsappFallback();
+    } catch {
+      window.alert("No se pudo generar el PDF. Probá de nuevo.");
+    } finally {
+      setWaBusy(false);
+    }
+  }
+
+  function downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function openWhatsappFallback() {
+    const href = whatsappUrl(telefono);
+    if (href) window.open(href, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -77,25 +162,19 @@ export function EstadoCuentaControls({
           </button>
         </div>
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3 sm:pt-0 lg:ml-auto lg:border-0 lg:pt-0 dark:border-slate-800">
-          {whatsappHref ? (
-            <a
-              href={whatsappHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary inline-flex min-h-10 flex-1 items-center justify-center sm:flex-none"
-            >
-              Enviar por WhatsApp
-            </a>
-          ) : (
-            <button
-              type="button"
-              disabled
-              className="btn-secondary inline-flex min-h-10 flex-1 cursor-not-allowed items-center justify-center opacity-60 sm:flex-none"
-              title="Agregá un teléfono en la ficha del cliente"
-            >
-              Enviar por WhatsApp
-            </button>
-          )}
+          <button
+            type="button"
+            disabled={waBusy}
+            className="btn-secondary inline-flex min-h-10 flex-1 items-center justify-center sm:flex-none disabled:opacity-60"
+            title={
+              telefono
+                ? "Genera un PDF y lo comparte (o lo descarga y abre WhatsApp)"
+                : "Genera y comparte el PDF; en PC puede descargarse para adjuntarlo a mano"
+            }
+            onClick={() => void enviarPdfWhatsapp()}
+          >
+            {waBusy ? "Generando PDF…" : "Enviar por WhatsApp"}
+          </button>
           <button
             type="button"
             className="btn-primary inline-flex min-h-10 flex-1 items-center justify-center sm:flex-none"
@@ -108,4 +187,3 @@ export function EstadoCuentaControls({
     </div>
   );
 }
-

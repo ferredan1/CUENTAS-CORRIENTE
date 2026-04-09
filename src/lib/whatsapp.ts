@@ -15,6 +15,13 @@ export function normalizarTelefonoWhatsapp(raw: string | null | undefined): stri
 
 const MAX_WA_TEXT = 3800;
 
+/** URL wa.me sin mensaje prearmado. Devuelve null si no hay teléfono válido. */
+export function whatsappUrl(telefono: string | null | undefined): string | null {
+  const n = normalizarTelefonoWhatsapp(telefono);
+  if (!n) return null;
+  return `https://wa.me/${n}`;
+}
+
 /** URL wa.me con cuerpo de mensaje (UTF-8). Devuelve null si no hay teléfono válido. */
 export function whatsappUrlWithBody(telefono: string | null | undefined, text: string): string | null {
   const n = normalizarTelefonoWhatsapp(telefono);

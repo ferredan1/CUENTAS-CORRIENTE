@@ -39,6 +39,20 @@ describe("extraer-lineas-comprobante", () => {
     expect(items.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("en Dux toma solo la descripción inmediata para evitar fusionar ítems", () => {
+    const texto = `
+FACTURA
+Descripción
+TORNILLO AUTOPERFORANTE FLANGEADA AGUJA [01] 08 X 1/2
+MOSQUETON 5 X 50 MM BLN-MOS02
+60,00500,000,0030.000,00
+`.trim();
+    const items = extraerItemsDelTextoComprobante(texto);
+    expect(items).toHaveLength(1);
+    expect(items[0]!.descripcion).toBe("MOSQUETON 5 X 50 MM BLN-MOS02");
+    expect(items[0]!.cantidad).toBe(60);
+  });
+
   it("PDF real Membranex (Downloads): al menos un ítem", async () => {
     const path = "C:/Users/ferre/Downloads/FacturaMEMBRANEXSAA00007000020197624278981267954302 (1).pdf";
     let buf: Buffer;
