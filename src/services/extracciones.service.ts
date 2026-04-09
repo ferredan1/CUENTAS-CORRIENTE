@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-export const PARSER_VERSION_AUTO_IMPORT = "auto-import-v1";
+export const PARSER_VERSION_AUTO_IMPORT = "auto-import-v2";
 
 export type EstadoExtraccion = "pendiente" | "ok" | "error";
 

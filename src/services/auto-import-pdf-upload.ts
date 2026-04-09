@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { extraerTextoDePdf } from "@/lib/pdf/extract-text";
 import {
+  extraerItemsDeTramoComprobante,
   extraerItemsDelTextoComprobante,
   extraerSugerenciaComprobante,
   segmentarComprobantesDesdeTexto,
@@ -144,7 +145,7 @@ export async function autoImportarPdfTrasSubida(
   for (let si = 0; si < segmentos.length; si++) {
     signal?.throwIfAborted();
     const seg = segmentos[si]!;
-    const items = extraerItemsDelTextoComprobante(seg.texto);
+    const items = extraerItemsDeTramoComprobante(seg.texto);
     const compBase =
       seg.comprobanteCompleto.replace(/\s/g, "") ||
       extraerSugerenciaComprobante(seg.texto)?.replace(/\s/g, "").replace(/–/g, "-");

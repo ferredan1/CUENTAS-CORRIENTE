@@ -191,12 +191,9 @@ export function extraerItemsFormatoDux(
     .split("\n")
     .map((l) => l.trim());
   const items: ItemExtraido[] = [];
-  const vistos = new Set<string>();
 
   function agregar(item: ItemExtraido): boolean {
-    const clave = `${item.descripcion.toLowerCase()}|${item.cantidad}|${item.precioUnitario ?? 0}`;
-    if (vistos.has(clave)) return false;
-    vistos.add(clave);
+    if (items.length >= 500) return false;
     items.push(item);
     return true;
   }
@@ -316,7 +313,11 @@ function intentarLineaProducto(line: string, inferirOpts?: OpcionesInferirCodigo
   return null;
 }
 
-export function extraerItemsDelTextoComprobante(
+/**
+ * Extracción sobre un tramo ya acotado (p. ej. un segmento de `segmentarComprobantesDesdeTexto`).
+ * No vuelve a partir por Nº de comprobante.
+ */
+export function extraerItemsDeTramoComprobante(
   texto: string,
   inferirOpts?: OpcionesInferirCodigo,
 ): ItemExtraido[] {
@@ -325,20 +326,31 @@ export function extraerItemsDelTextoComprobante(
   if (dux.length > 0) return dux;
 
   const lineas = t.split("\n");
-  const vistos = new Set<string>();
   const items: ItemExtraido[] = [];
 
   for (const linea of lineas) {
     const item = intentarLineaProducto(linea, inferirOpts);
     if (!item) continue;
-    const clave = `${item.descripcion.toLowerCase()}|${item.cantidad}`;
-    if (vistos.has(clave)) continue;
-    vistos.add(clave);
     items.push(item);
     if (items.length >= 300) break;
   }
 
   return items;
+}
+
+/** Texto completo del PDF: parte por Nº de comprobante y concatena ítems (no colapsa líneas iguales entre comprobantes). */
+export function extraerItemsDelTextoComprobante(
+  texto: string,
+  inferirOpts?: OpcionesInferirCodigo,
+): ItemExtraido[] {
+  const t = texto.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const segmentos = segmentarComprobantesDesdeTexto(t);
+  const out: ItemExtraido[] = [];
+  for (const seg of segmentos) {
+    out.push(...extraerItemsDeTramoComprobante(seg.texto, inferirOpts));
+    if (out.length >= 500) break;
+  }
+  return out.slice(0, 500);
 }
 
 /** Inicio de cada comprobante en el texto (varios PDF repiten el mismo layout). */

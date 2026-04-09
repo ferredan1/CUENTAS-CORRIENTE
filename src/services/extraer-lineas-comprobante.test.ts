@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import pdfParse from "pdf-parse";
-import { extraerItemsDelTextoComprobante, segmentarComprobantesDesdeTexto } from "./extraer-lineas-comprobante";
+import {
+  extraerItemsDeTramoComprobante,
+  extraerItemsDelTextoComprobante,
+  segmentarComprobantesDesdeTexto,
+} from "./extraer-lineas-comprobante";
 import { normalizarTextoExtraidoPdf } from "@/lib/pdf/extract-text";
 
 /** Texto típico pdf-parse de factura Dux (Membranex / Ferretería Dany). */
@@ -74,6 +78,27 @@ REMOTUTTO REMOVEDOR GEL 1 KG 1015
     expect(items.length).toBeGreaterThanOrEqual(3);
   });
 
+  it("mismo ítem en dos comprobantes en un texto: no colapsar (varios Nº en el mismo PDF)", () => {
+    const texto = `
+Generado por www.duxsoftware.com.ar
+Nº 00007-00004636
+FECHA: 16/03/2026
+Descripción
+MISMO PRODUCTO PRUEBA 999001
+1,00100,000,00100,00
+Nº 00007-00004647
+FECHA: 17/03/2026
+Descripción
+MISMO PRODUCTO PRUEBA 999001
+1,00100,000,00100,00
+`.trim();
+    const items = extraerItemsDelTextoComprobante(texto);
+    const mismo = items.filter((it) => it.descripcion.includes("MISMO PRODUCTO PRUEBA"));
+    expect(mismo).toHaveLength(2);
+    expect(mismo[0]!.cantidad).toBe(1);
+    expect(mismo[1]!.cantidad).toBe(1);
+  });
+
   it("Dux: no confundir DESCARGA… con encabezado «Desc» (Ferretería Dany)", () => {
     const texto = `
 COMPROBANTE
@@ -103,7 +128,7 @@ DESCARGA APOYO TIPO ROCA NACIONAL 332062
     const data = await pdfParse(buf);
     const texto = normalizarTextoExtraidoPdf(typeof data.text === "string" ? data.text : "");
     const segs = segmentarComprobantesDesdeTexto(texto);
-    const itemsSeg = extraerItemsDelTextoComprobante(segs[0]!.texto);
+    const itemsSeg = extraerItemsDeTramoComprobante(segs[0]!.texto);
     const itemsFull = extraerItemsDelTextoComprobante(texto);
     expect(itemsFull.length).toBeGreaterThan(0);
     expect(itemsSeg.length).toBeGreaterThan(0);
