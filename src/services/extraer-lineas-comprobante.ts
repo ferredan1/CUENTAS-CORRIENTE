@@ -66,15 +66,37 @@ function esLineaSoloImportesDux(line: string): boolean {
   return p !== null && p.amounts.length === 5;
 }
 
+/**
+ * Código interno en renglón solo (p. ej. «3568») entre la descripción larga y la línea de importes Dux.
+ * Solo dígitos, longitud acotada, para no confundir con texto ni cantidades «1,00».
+ */
+function lineaPareceSoloCodigoInterno(line: string): boolean {
+  const t = line.trim();
+  if (t.length < 3 || t.length > 12) return false;
+  return /^\d{3,12}$/.test(t);
+}
+
 function recolectarBloqueDescripcion(lineas: string[], idxImportes: number): string | null {
   // En Dux, la gran mayoría de ítems tiene descripción en la línea inmediata anterior
   // a los importes. Tomar un bloque completo hacia arriba puede fusionar ítems vecinos.
+  // Si esa línea es solo código numérico, subir una línea más (descripción real).
   for (let j = idxImportes - 1; j >= 0; j--) {
     const L = lineas[j]!;
     if (!L) continue;
-    if (lineaPareceEncabezadoOlegal(L)) return null;
     if (esLineaSoloImportesDux(L)) return null;
-    return L.trim();
+    const trimmed = L.trim();
+    // Antes que encabezado: códigos «3568» tienen < 5 chars y no deben anular el ítem.
+    if (lineaPareceSoloCodigoInterno(trimmed) && j >= 1) {
+      for (let k = j - 1; k >= 0; k--) {
+        const prev = lineas[k]!;
+        if (!prev) continue;
+        if (lineaPareceEncabezadoOlegal(prev)) break;
+        if (esLineaSoloImportesDux(prev)) break;
+        return `${prev.trim()} ${trimmed}`;
+      }
+    }
+    if (lineaPareceEncabezadoOlegal(L)) return null;
+    return trimmed;
   }
   return null;
 }

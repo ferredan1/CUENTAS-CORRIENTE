@@ -53,6 +53,27 @@ MOSQUETON 5 X 50 MM BLN-MOS02
     expect(items[0]!.cantidad).toBe(60);
   });
 
+  it("Dux: descripción larga + código en línea aparte antes de importes pegados (TERSEN / pdf-parse)", () => {
+    const texto = `
+FACTURA
+Descripción
+LIJA AL AGUA [GRANO 150] X 25 UNI BREMEN 7567
+7,00900,000,006.300,00
+TERSEN LATEX ACRILICO EXTERIOR/INTERIOR X 10 LTS ***AHORA SUBMARCA TERSEN***
+3568
+1,0096.600,000,0096.600,00
+REMOTUTTO REMOVEDOR GEL 1 KG 1015
+1,0011.550,000,0011.550,00
+`.trim();
+    const items = extraerItemsDelTextoComprobante(texto);
+    const tersen = items.find((it) => it.descripcion.includes("TERSEN"));
+    expect(tersen).toBeDefined();
+    expect(tersen!.descripcion).toContain("3568");
+    expect(tersen!.cantidad).toBe(1);
+    expect(tersen!.precioUnitario).toBe(96600);
+    expect(items.length).toBeGreaterThanOrEqual(3);
+  });
+
   it("PDF real Membranex (Downloads): al menos un ítem", async () => {
     const path = "C:/Users/ferre/Downloads/FacturaMEMBRANEXSAA00007000020197624278981267954302 (1).pdf";
     let buf: Buffer;
