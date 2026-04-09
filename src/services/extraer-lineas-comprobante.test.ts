@@ -74,6 +74,24 @@ REMOTUTTO REMOVEDOR GEL 1 KG 1015
     expect(items.length).toBeGreaterThanOrEqual(3);
   });
 
+  it("Dux: no confundir DESCARGA… con encabezado «Desc» (Ferretería Dany)", () => {
+    const texto = `
+COMPROBANTE
+Nº 00007-00004774
+Generado por www.duxsoftware.com.ar
+Descripción
+ARTICULO 42000 VALVULA ENTRADA AGUA IDEAL MOTTA 332205
+1,009.750,000,009.750,00
+DESCARGA APOYO TIPO ROCA NACIONAL 332062
+1,0015.600,000,0015.600,00
+`.trim();
+    const items = extraerItemsDelTextoComprobante(texto);
+    const descarga = items.find((it) => it.descripcion.includes("DESCARGA"));
+    expect(descarga).toBeDefined();
+    expect(descarga!.precioUnitario).toBe(15600);
+    expect(items.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("PDF real Membranex (Downloads): al menos un ítem", async () => {
     const path = "C:/Users/ferre/Downloads/FacturaMEMBRANEXSAA00007000020197624278981267954302 (1).pdf";
     let buf: Buffer;

@@ -108,7 +108,7 @@ function lineaPareceEncabezadoOlegal(line: string): boolean {
   const l = line.trim().toLowerCase();
   if (l.length < 5) return true;
   return (
-    /^(cant\.?|cod\.|cód|producto|descrip|detalle|precio|p\.?\s*unit|%|desc\.?|sub\s*tot|importe|subtotal|total|iva|factura|remito|comprobante|cuit|cuil|tipo\s|n[°º]|nro|fecha|vto|venc|cliente|domicilio|tel\.?|email|condici|iibb|ing\.?\s*brutos)/i.test(
+    /^(cant\.?|cod\.|cód|producto|descrip|detalle|precio|p\.?\s*unit|%|\bdesc\.?\b|sub\s*tot|importe|subtotal|total|iva|factura|remito|comprobante|cuit|cuil|tipo\s|n[°º]|nro|fecha|vto|venc|cliente|domicilio|tel\.?|email|condici|iibb|ing\.?\s*brutos)/i.test(
       l.slice(0, 32),
     ) ||
     /^\s*página\s*\d/i.test(l) ||
