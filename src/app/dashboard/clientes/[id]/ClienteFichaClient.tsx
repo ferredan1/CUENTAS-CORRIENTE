@@ -10,6 +10,7 @@ import { BorrarComprobanteButton } from "./BorrarComprobanteButton";
 import { MarcarComprobanteButton } from "./MarcarComprobanteButton";
 import { DatosClienteForm } from "./DatosClienteForm";
 import { NuevaObraForm } from "./NuevaObraForm";
+import { ETIQUETA_ESTADO_GESTION } from "@/types/estado-gestion-cuenta";
 type ArchivoDTO = {
   id: string;
   nombre: string | null;
@@ -151,6 +152,12 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
     return "Pendiente";
   }
 
+  const estadoSaldoLabel: Record<ObraSaldoDTO["estadoSaldo"], string> = {
+    cerrado_facturado: ETIQUETA_ESTADO_GESTION.CUENTA_CERRADA,
+    enviado_pendiente_pago: ETIQUETA_ESTADO_GESTION.FACTURADO_ENVIADO,
+    sin_facturar: ETIQUETA_ESTADO_GESTION.FALTA_PAGO,
+  };
+
   return (
     <>
       <nav className="breadcrumb-muted" aria-label="Migas de pan">
@@ -177,13 +184,7 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
             Nueva venta
           </Link>
           <Link href={`/dashboard/carga?clienteId=${c.id}`} className="btn-primary">
-            Registrar cobro
-          </Link>
-          <Link href={`/dashboard/carga?clienteId=${c.id}&tipo=devolucion`} className="btn-secondary">
-            Agregar devolución
-          </Link>
-          <Link href={`/dashboard/carga?clienteId=${c.id}&tipo=ajuste`} className="btn-secondary">
-            Agregar ajuste
+            Registrar movimiento
           </Link>
           <Link
             href={`/dashboard/clientes/${c.id}/estado-cuenta`}
@@ -475,7 +476,7 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
       {tab === "movimientos" && (
         <div className="space-y-4">
           <p className="text-sm text-slate-600">
-            Todos los movimientos del cliente (todas las obras y sin obra). Podés registrar cobros desde acá.
+            Todos los movimientos del cliente (todas las obras y sin obra). Podés registrar movimientos desde acá.
           </p>
           <ObraMovimientosClient todoCliente clienteId={c.id} saldoObra={c.saldo} />
         </div>
@@ -578,9 +579,9 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
                         value={o.estadoSaldo}
                         onChange={(e) => void patchEstadoSaldoObra(o.id, e.target.value as ObraSaldoDTO["estadoSaldo"])}
                       >
-                        <option value="sin_facturar">SIN FACTURAR</option>
-                        <option value="cerrado_facturado">CERRADO / FACTURADO</option>
-                        <option value="enviado_pendiente_pago">ENVIADO - PENDIENTE DE PAGO</option>
+                        <option value="cerrado_facturado">{estadoSaldoLabel.cerrado_facturado}</option>
+                        <option value="enviado_pendiente_pago">{estadoSaldoLabel.enviado_pendiente_pago}</option>
+                        <option value="sin_facturar">{estadoSaldoLabel.sin_facturar}</option>
                       </select>
                     </td>
                     <td

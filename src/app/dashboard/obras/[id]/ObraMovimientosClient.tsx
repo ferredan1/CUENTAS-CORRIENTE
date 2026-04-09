@@ -785,21 +785,25 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
             >
               {showNotasCols ? "Ocultar notas" : "Mostrar notas"}
             </button>
-            <Link
-              href={cargaHref}
-              className="btn-primary text-sm"
-              title="Registrar cobro del cliente (efectivo, transferencia, tarjeta o cheque)"
-            >
-              Registrar cobro
-            </Link>
-            <button
-              type="button"
-              className="btn-secondary text-sm"
-              title="Registrar un cobro e imputarlo a una o varias ventas con montos parciales"
-              onClick={() => setModalPagoParcialOpen(true)}
-            >
-              Pago parcial / imputar
-            </button>
+            {!sinObra ? (
+              <Link
+                href={cargaHref}
+                className="btn-primary text-sm"
+                title="Registrar cobro del cliente (efectivo, transferencia, tarjeta o cheque)"
+              >
+                Registrar movimiento
+              </Link>
+            ) : null}
+            {!sinObra ? (
+              <button
+                type="button"
+                className="btn-secondary text-sm"
+                title="Registrar un cobro e imputarlo a una o varias ventas con montos parciales"
+                onClick={() => setModalPagoParcialOpen(true)}
+              >
+                Pago parcial / imputar
+              </button>
+            ) : null}
           </div>
         </div>
 
