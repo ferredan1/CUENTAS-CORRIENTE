@@ -23,7 +23,16 @@ const nextConfig: NextConfig = {
     "pg",
     "prisma",
     "pdf-parse",
+    "pdfkit",
   ],
+  outputFileTracingIncludes: {
+    "/api/clientes/[id]/estado-cuenta/pdf/route": [
+      "./node_modules/pdfkit/js/data/**",
+      "./node_modules/pdfkit/js/**",
+      "./node_modules/fontkit/**",
+      "./node_modules/linebreak/**",
+    ],
+  },
 };
 
 export default nextConfig;
