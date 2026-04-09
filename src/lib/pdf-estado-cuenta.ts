@@ -1,4 +1,3 @@
-import PDFDocument from "pdfkit";
 import { formatFechaCorta, formatMoneda } from "@/lib/format";
 import type { EstadoCuentaCargado } from "@/services/estado-cuenta-data";
 
@@ -22,7 +21,33 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
   const periodoHasta = data.hasta ? formatFechaCorta(data.hasta) : "hoy";
 
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({
+    void (async () => {
+      const mod = await import("pdfkit");
+      const PDFDocumentCtor = ((mod as unknown as { default?: unknown }).default ?? mod) as new (opts: {
+      layout: "landscape";
+      margin: number;
+      size: "A4";
+      info: { Title: string; Author: string };
+      }) => {
+        on: (event: string, cb: (chunk: Buffer) => void) => void;
+        page: { width: number; height: number };
+        y: number;
+        addPage: () => void;
+        moveDown: (n?: number) => void;
+        fontSize: (n: number) => any;
+        font: (name: string) => any;
+        fillColor: (color: string) => any;
+        text: (text: string, x?: number, y?: number, opts?: Record<string, unknown>) => any;
+        moveTo: (x: number, y: number) => any;
+        lineTo: (x: number, y: number) => any;
+        strokeColor: (color: string) => any;
+        lineWidth: (n: number) => any;
+        stroke: () => any;
+        heightOfString: (text: string, opts?: Record<string, unknown>) => number;
+        end: () => void;
+      };
+
+    const doc = new PDFDocumentCtor({
       layout: "landscape",
       margin: 36,
       size: "A4",
@@ -137,6 +162,7 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
         : data.saldoAnterior;
     doc.text(`Saldo al cierre del listado: ${formatMoneda(saldoFinal)}`, left, doc.y);
 
-    doc.end();
+      doc.end();
+    })().catch(reject);
   });
 }

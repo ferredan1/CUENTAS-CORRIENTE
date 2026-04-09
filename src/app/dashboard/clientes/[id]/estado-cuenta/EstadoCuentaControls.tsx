@@ -78,7 +78,11 @@ export function EstadoCuentaControls({
     try {
       const res = await fetch(path, { credentials: "same-origin" });
       if (!res.ok) {
-        const errText = res.status === 404 ? "Cliente no encontrado." : `Error ${res.status}`;
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+        const errText =
+          res.status === 404
+            ? "Cliente no encontrado."
+            : payload?.error?.trim() || `Error ${res.status}`;
         window.alert(errText);
         return;
       }

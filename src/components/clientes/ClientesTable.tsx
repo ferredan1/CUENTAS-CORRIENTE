@@ -61,11 +61,11 @@ export function ClientesTable({
         className={`table-app table-fixed w-full max-w-full min-w-[min(100%,36rem)] ${showEstadoCuentaColumn ? "lg:min-w-[56rem]" : "lg:min-w-[480px]"}`}
       >
         <colgroup>
-          <col className="w-[26%] sm:w-[24%]" />
-          <col className="w-[7.5rem]" />
+          <col className={showEstadoCuentaColumn ? "w-[25%]" : "w-[32%]"} />
+          <col className="w-[8.75rem]" />
           <col className="hidden w-[5.5rem] md:table-column" />
           {showEstadoCuentaColumn ? <col className="w-[22%]" /> : null}
-          <col className="min-w-[10rem] w-auto" />
+          <col className={showEstadoCuentaColumn ? "w-[10.5rem]" : "w-[9rem]"} />
         </colgroup>
         <thead>
           <tr>
@@ -79,7 +79,7 @@ export function ClientesTable({
                 Cliente <span className="shrink-0 text-slate-500 dark:text-slate-400">{iconOrder(orderBy, "nombre")}</span>
               </button>
             </th>
-            <th className="w-[7.5rem] shrink-0 p-2 text-right sm:p-3">
+            <th className="w-[8.75rem] shrink-0 p-2 text-right sm:p-3">
               <button
                 type="button"
                 className="inline-flex w-full items-center justify-end gap-1 hover:underline"
@@ -127,7 +127,7 @@ export function ClientesTable({
                     </div>
                   ) : null}
                 </td>
-                <td className="w-[7.5rem] shrink-0 p-2 text-right align-top sm:p-3">
+                <td className="w-[8.75rem] shrink-0 p-2 text-right align-top sm:p-3">
                   <span
                     className={`inline-flex max-w-full items-center rounded-md px-2 py-0.5 font-mono text-sm tabular-nums font-semibold ${
                       c.saldo > 0
@@ -137,7 +137,7 @@ export function ClientesTable({
                           : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
                     }`}
                   >
-                    <span className="truncate">{formatMoneda(c.saldo)}</span>
+                    <span>{formatMoneda(c.saldo)}</span>
                   </span>
                   {c.saldo < 0 ? (
                     <div className="mt-1 text-[0.65rem] font-medium leading-tight text-emerald-700 dark:text-emerald-300">
