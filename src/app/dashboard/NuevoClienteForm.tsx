@@ -3,9 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
-type Props = { variant?: "default" | "compact" };
+type Props = {
+  variant?: "default" | "compact";
+  /** Sin caja `card` (uso dentro de `CenteredFormModal`). */
+  embeddedInModal?: boolean;
+  onCreated?: () => void;
+};
 
-export function NuevoClienteForm({ variant = "default" }: Props) {
+export function NuevoClienteForm({ variant = "default", embeddedInModal = false, onCreated }: Props) {
   const router = useRouter();
   const contactoRef = useRef<HTMLDetailsElement>(null);
   const [nombre, setNombre] = useState("");
@@ -43,6 +48,7 @@ export function NuevoClienteForm({ variant = "default" }: Props) {
       setCuit("");
       setEmail("");
       setTelefono("");
+      onCreated?.();
       router.refresh();
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : "Error");
@@ -53,8 +59,10 @@ export function NuevoClienteForm({ variant = "default" }: Props) {
 
   const compact = variant === "compact";
 
+  const formClass = embeddedInModal ? "space-y-3" : "card-compact space-y-3";
+
   return (
-    <form onSubmit={onSubmit} className="card-compact space-y-3">
+    <form onSubmit={onSubmit} className={formClass}>
       {!compact && (
         <p className="text-[0.7rem] text-slate-500">
           Solo nombre y tipo para crear; el resto puede ir después en la ficha.

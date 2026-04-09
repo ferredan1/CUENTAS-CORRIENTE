@@ -55,7 +55,6 @@ function rowKey(r: MovRow): string {
     r.chequeNumero ?? "",
     r.chequeVencimiento,
     r.fechaRecepcion,
-    r.codigoProducto ?? "",
     r.tipo,
     r.descripcion,
     r.notas ?? "",
@@ -336,7 +335,7 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
       }
     }
 
-    const colCount = (showChequeCols ? 13 : 9) + (showNotasCols ? 1 : 0);
+    const colCount = (showChequeCols ? 12 : 8) + (showNotasCols ? 1 : 0);
 
     async function confirmMarcarPagoDesdeGrilla() {
       if (!marcarPagoRow) return;
@@ -477,16 +476,6 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
               </td>
             </>
           )}
-          <td className={`border-r border-slate-100 p-0 ${mobileExtraColsClass}`}>
-            <input
-              defaultValue={r.codigoProducto ?? ""}
-              className="excel-cell-input w-full border-0 bg-transparent px-2 py-1.5 font-mono text-xs focus:bg-white focus:ring-2 focus:ring-emerald-500/25 focus:ring-inset"
-              onBlur={(e) => {
-                const v = e.target.value.trim() || null;
-                if (v !== (r.codigoProducto ?? "")) void patchRow(r.id, { codigoProducto: v });
-              }}
-            />
-          </td>
           <td className="border-r border-slate-100 p-0">
             <select
               defaultValue={r.tipo}
@@ -915,11 +904,6 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
                       </th>
                     </>
                   )}
-                  <th
-                    className={`border-b border-slate-200 bg-slate-50 p-2 text-left text-[0.65rem] font-semibold uppercase tracking-wide text-slate-600 border-r border-slate-200 lg:w-28 ${mobileExtraColsClass}`}
-                  >
-                    Código
-                  </th>
                   <th className="border-b border-slate-200 bg-slate-50 p-2 text-left text-[0.65rem] font-semibold uppercase tracking-wide text-slate-600 border-r border-slate-200 lg:w-32">
                     Tipo
                   </th>

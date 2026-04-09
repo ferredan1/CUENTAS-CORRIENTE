@@ -6,7 +6,7 @@ const OPCIONES: { id: FiltroClientesTabla; label: string }[] = [
   { id: "todos", label: "Todos" },
   { id: "con_deuda", label: "Con deuda" },
   { id: "al_dia", label: "Al día" },
-  { id: "vencidos", label: "Vencidos (+60 d)" },
+  { id: "vencidos", label: "Vencidos (+15 d)" },
   { id: "sin_movimientos", label: "Sin movimientos" },
 ];
 
@@ -30,7 +30,7 @@ export function FiltrosClientes({ value, onChange, disabled }: Props) {
           className={
             value === o.id
               ? "rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm ring-1 ring-emerald-700/20"
-              : "rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-200/80 hover:bg-slate-200/80 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-600"
+              : "rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-600 dark:hover:bg-slate-700/80"
           }
         >
           {o.label}

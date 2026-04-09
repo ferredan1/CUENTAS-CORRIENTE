@@ -43,12 +43,6 @@ const RE_DUX_LINEA_IMPORTES =
 const RE_DUX_COLA_CON_ESPACIOS =
   /(\d+,\d{2})\s+(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})\s+(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})\s+(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})\s*$/;
 
-/**
- * Código al inicio del renglón: MARCA-12345 - descripción (p. ej. factura A con ítems detallados).
- */
-const RE_CODIGO_CON_PREFIJO_EN_LINEA =
-  /^\s*([A-Z0-9][\w.-]*-[A-Za-z0-9][\w.-]*)\s*-\s+/i;
-
 /** Despeja montos AR pegados: primero miles con punto, si no «dígitos,dec». */
 function parsearImportesPelando(line: string): { cant: string; amounts: string[] } | null {
   const cm = line.match(/^(\d+,\d{2})/);
@@ -85,15 +79,8 @@ function recolectarBloqueDescripcion(lineas: string[], idxImportes: number): str
   return partes.join(" ");
 }
 
-function codigoDesdeDescripcionRenglon(
-  desc: string,
-  inferirOpts?: OpcionesInferirCodigo,
-): string {
-  const t = desc.trim();
-  const pref = t.match(RE_CODIGO_CON_PREFIJO_EN_LINEA);
-  if (pref) return pref[1]!;
-  return inferirCodigoProductoDesdeLinea(t, inferirOpts);
-}
+/** Reservado por compatibilidad con la API de extracción (sin inferencia de SKU). */
+export type OpcionesInferirCodigo = Record<string, never>;
 
 function lineaPareceEncabezadoOlegal(line: string): boolean {
   const l = line.trim().toLowerCase();
@@ -105,41 +92,6 @@ function lineaPareceEncabezadoOlegal(line: string): boolean {
     /^\s*página\s*\d/i.test(l) ||
     /^generado\s+por\b/i.test(l)
   );
-}
-
-/** Reservado para futuras opciones de inferencia de código desde el texto del comprobante. */
-export type OpcionesInferirCodigo = Record<string, never>;
-
-/** Evita tomar un número suelto del medio de la descripción como SKU. */
-function codigoSoloDigitosValido(code: string, descLen: number): boolean {
-  if (!/^\d+$/.test(code)) return true;
-  const n = code.length;
-  if (n >= 5) return descLen >= 4;
-  if (n >= 3) return descLen >= 6;
-  return descLen >= 10;
-}
-
-/**
- * Código de artículo inferido para el campo `codigoProducto`, sin modificar el texto completo.
- * La descripción guardada debe ser siempre la línea íntegra del PDF.
- */
-export function inferirCodigoProductoDesdeLinea(
-  lineaCompleta: string,
-  opts?: OpcionesInferirCodigo,
-): string {
-  const t = lineaCompleta.trim();
-  /** Último token: alfanumérico (CAR-003, ABC123), o 1–10 dígitos al final (p. ej. …3KG 4). */
-  const m = t.match(
-    /^(.+?)\s+([A-Z]{1,6}-\d{2,8}|[A-Z]{2,10}-\d[A-Z0-9.\-/]{0,22}|[A-Z]{0,4}\d[A-Z0-9.\-/]{1,22}|\d{1,10})$/i,
-  );
-  if (!m) return "-";
-  const desc = m[1]!.trim();
-  const code = m[2]!;
-  if (desc.length < 4) return "-";
-  if (!codigoSoloDigitosValido(code, desc.length)) return "-";
-
-  void opts;
-  return code;
 }
 
 function construirItemDuxDesdeMatchImportes(
@@ -161,7 +113,7 @@ function construirItemDuxDesdeMatchImportes(
 
   const desc = descripcion.trim();
   if (desc.length < 3) return null;
-  const codigo = codigoDesdeDescripcionRenglon(desc, inferirOpts);
+  void inferirOpts;
 
   let pu = precioUnit;
   if (Number.isFinite(subtotal) && subtotal >= 0 && cant > 0) {
@@ -171,7 +123,7 @@ function construirItemDuxDesdeMatchImportes(
     }
   }
 
-  return { codigo, descripcion: desc, cantidad: cant, precioUnitario: pu };
+  return { codigo: "-", descripcion: desc, cantidad: cant, precioUnitario: pu };
 }
 
 /**
@@ -306,12 +258,8 @@ function intentarLineaProducto(line: string, inferirOpts?: OpcionesInferirCodigo
           cuerpo = cuerpo.slice(0, -1);
         }
         if (cuerpo.length === 0) return null;
-        const primero = cuerpo[0]!;
-        const codigoCol =
-          /^[\w.\-/]{1,18}$/i.test(primero) && primero.length <= 16 ? primero : "";
-        const codigo = codigoCol || codigoDesdeDescripcionRenglon(t, inferirOpts);
         if (t.length >= 3) {
-          return { codigo: codigo || "-", descripcion: t, cantidad: cant };
+          return { codigo: "-", descripcion: t, cantidad: cant };
         }
       }
     }
@@ -328,14 +276,8 @@ function intentarLineaProducto(line: string, inferirOpts?: OpcionesInferirCodigo
           resto = resto.slice(0, -1);
         }
         if (resto.length === 0) return null;
-        const primero = resto[0]!;
-        const codigoCol =
-          /^\d{1,12}$/.test(primero) || /^[A-Z0-9.\-/]{1,15}$/i.test(primero)
-            ? primero
-            : "";
-        const codigo = codigoCol || codigoDesdeDescripcionRenglon(t, inferirOpts);
         if (t.length >= 3) {
-          return { codigo: codigo || "-", descripcion: t, cantidad: cant };
+          return { codigo: "-", descripcion: t, cantidad: cant };
         }
       }
     }
@@ -345,8 +287,7 @@ function intentarLineaProducto(line: string, inferirOpts?: OpcionesInferirCodigo
   if (mInicio) {
     const cant = parseNumeroArg(mInicio[1]!);
     if (Number.isFinite(cant) && cant > 0 && cant < 100_000) {
-      const codigo = codigoDesdeDescripcionRenglon(t, inferirOpts);
-      return { codigo: codigo || "-", descripcion: t, cantidad: cant };
+      return { codigo: "-", descripcion: t, cantidad: cant };
     }
   }
 

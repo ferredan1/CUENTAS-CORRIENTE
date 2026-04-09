@@ -6,6 +6,7 @@ import {
 } from "@/components/proveedores/FiltrosProveedores";
 import { formatFechaCorta, formatMoneda } from "@/lib/format";
 import { BorrarProveedorButton } from "@/components/BorrarProveedorButton";
+import { CenteredFormModal } from "@/components/CenteredFormModal";
 import { IconSearch } from "@/components/UiIcons";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -209,16 +210,14 @@ export function ProveedoresClient({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" className="btn-primary" onClick={() => setFormOpen((v) => !v)}>
-            {formOpen ? "Cancelar" : "Nuevo proveedor"}
+          <button type="button" className="btn-primary" onClick={() => setFormOpen(true)}>
+            Nuevo proveedor
           </button>
         </div>
       </header>
 
-      {formOpen ? (
-      <section className="card p-4 sm:p-5">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Alta rápida</h2>
-        <form onSubmit={crearProveedor} className="mt-4 space-y-3">
+      <CenteredFormModal open={formOpen} onClose={() => setFormOpen(false)} title="Nuevo proveedor">
+        <form onSubmit={crearProveedor} className="space-y-3">
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-[180px] flex-1 max-w-md">
               <label className="label-field" htmlFor="nuevoProveedor">
@@ -289,7 +288,9 @@ export function ProveedoresClient({
           </details>
 
           <div className="flex justify-end">
-            <span className="text-xs text-slate-500">Completá solo nombre para crear rápido.</span>
+            <span className="text-xs text-slate-600 dark:text-slate-400">
+              Completá solo nombre para crear rápido.
+            </span>
           </div>
         </form>
         {crearError ? (
@@ -297,8 +298,7 @@ export function ProveedoresClient({
             {crearError}
           </p>
         ) : null}
-      </section>
-      ) : null}
+      </CenteredFormModal>
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">

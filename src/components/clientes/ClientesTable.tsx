@@ -58,35 +58,42 @@ export function ClientesTable({
   return (
     <div ref={tableWrapRef} className="table-shell touch-pan-x">
       <table
-        className={`table-app w-full max-w-full min-w-[min(100%,42rem)] ${showEstadoCuentaColumn ? "lg:min-w-[640px]" : "lg:min-w-[480px]"}`}
+        className={`table-app table-fixed w-full max-w-full min-w-[min(100%,36rem)] ${showEstadoCuentaColumn ? "lg:min-w-[56rem]" : "lg:min-w-[480px]"}`}
       >
+        <colgroup>
+          <col className="w-[26%] sm:w-[24%]" />
+          <col className="w-[7.5rem]" />
+          <col className="hidden w-[5.5rem] md:table-column" />
+          {showEstadoCuentaColumn ? <col className="w-[22%]" /> : null}
+          <col className="min-w-[10rem] w-auto" />
+        </colgroup>
         <thead>
           <tr>
-            <th className="min-w-[8rem] max-w-[18rem]">
+            <th className="max-w-0 p-2 sm:p-3">
               <button
                 type="button"
-                className="inline-flex items-center gap-1 hover:underline"
+                className="inline-flex max-w-full items-center gap-1 truncate text-left hover:underline"
                 onClick={() => onOrderByChange("nombre")}
                 title="Ordenar por nombre"
               >
-                Cliente <span className="text-slate-400">{iconOrder(orderBy, "nombre")}</span>
+                Cliente <span className="shrink-0 text-slate-500 dark:text-slate-400">{iconOrder(orderBy, "nombre")}</span>
               </button>
             </th>
-            <th className="w-[7.5rem] shrink-0 text-right">
+            <th className="w-[7.5rem] shrink-0 p-2 text-right sm:p-3">
               <button
                 type="button"
                 className="inline-flex w-full items-center justify-end gap-1 hover:underline"
                 onClick={() => onOrderByChange("saldo")}
                 title="Ordenar por saldo"
               >
-                Saldo <span className="text-slate-400">{iconOrder(orderBy, "saldo")}</span>
+                Saldo <span className="text-slate-500 dark:text-slate-400">{iconOrder(orderBy, "saldo")}</span>
               </button>
             </th>
-            <th className="hidden w-[6.5rem] whitespace-nowrap xl:table-cell">Últ. mov.</th>
+            <th className="hidden w-[5.5rem] whitespace-nowrap p-2 md:table-cell sm:p-3">Últ. mov.</th>
             {showEstadoCuentaColumn ? (
-              <th className="w-[min(13rem,32vw)] max-w-[14rem]">Estado de cuenta</th>
+              <th className="p-2 sm:p-3">Estado de cuenta</th>
             ) : null}
-            <th className="w-[11rem] min-w-[11rem] shrink-0 text-right"> </th>
+            <th className="p-2 text-right sm:p-3"> </th>
           </tr>
         </thead>
         <tbody>
@@ -105,21 +112,23 @@ export function ClientesTable({
                 key={c.id}
                 className={`group border-b border-slate-100 transition-colors ${
                   c.saldo > 0
-                    ? "bg-rose-50/35 dark:bg-rose-950/20"
+                    ? "bg-rose-50/60 dark:bg-rose-950/30"
                     : c.saldo < 0
-                      ? "bg-emerald-50/20 dark:bg-emerald-950/15"
-                      : ""
+                      ? "bg-emerald-50/45 dark:bg-emerald-950/25"
+                      : "bg-white dark:bg-slate-950"
                 }`}
               >
-                <td className="max-w-[18rem] align-top">
-                  <div className="font-medium text-slate-900 dark:text-slate-100">{c.nombre}</div>
+                <td className="max-w-0 align-top p-2 sm:p-3">
+                  <div className="truncate font-medium text-slate-900 dark:text-slate-100" title={c.nombre}>
+                    {c.nombre}
+                  </div>
                   {[c.cuit, c.telefono].filter(Boolean).length > 0 ? (
-                    <div className="text-[0.65rem] text-slate-500 dark:text-slate-400">
+                    <div className="truncate text-[0.65rem] text-slate-600 dark:text-slate-300" title={[c.cuit, c.telefono].filter(Boolean).join(" · ")}>
                       {[c.cuit, c.telefono].filter(Boolean).join(" · ")}
                     </div>
                   ) : null}
                 </td>
-                <td className="w-[7.5rem] shrink-0 text-right align-top">
+                <td className="w-[7.5rem] shrink-0 p-2 text-right align-top sm:p-3">
                   <span
                     className={`inline-flex rounded-md px-2 py-0.5 font-mono text-sm tabular-nums font-semibold ${
                       c.saldo > 0
@@ -133,25 +142,30 @@ export function ClientesTable({
                     {c.saldo < 0 ? <span className="ml-1 text-[0.65rem] font-normal">a favor</span> : null}
                   </span>
                 </td>
-                <td className="hidden w-[6.5rem] whitespace-nowrap text-xs text-slate-600 xl:table-cell">{ult}</td>
+                <td className="hidden w-[5.5rem] whitespace-nowrap p-2 text-xs text-slate-700 dark:text-slate-300 md:table-cell sm:p-3">
+                  {ult}
+                </td>
                 {showEstadoCuentaColumn ? (
-                  <td className="max-w-[14rem] align-top">
+                  <td className="max-w-0 align-top p-2 sm:p-3">
                     <EstadoGestionCuentaCell
                       clienteId={c.id}
+                      nombreCliente={c.nombre}
+                      telefono={c.telefono}
+                      saldo={c.saldo}
                       estadoCliente={c.estadoGestionCuenta}
                       obras={c.obrasEstado}
                       onGuardado={onEstadoGestionGuardado}
                     />
                   </td>
                 ) : null}
-                <td className="w-[11rem] min-w-[11rem] shrink-0 align-middle text-right">
-                  <div className="inline-flex flex-nowrap items-center justify-end gap-1 opacity-100 transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:focus-within:opacity-100">
+                <td className="align-top p-2 text-right sm:p-3">
+                  <div className="flex flex-wrap items-center justify-end gap-1 sm:flex-nowrap">
                     <Link
                       href={`/dashboard/carga?clienteId=${encodeURIComponent(c.id)}`}
                       className={
                         conDeuda
-                          ? "btn-primary inline-flex h-8 shrink-0 items-center px-2 py-0 text-[0.65rem]"
-                          : "btn-secondary inline-flex h-8 shrink-0 items-center px-2 py-0 text-[0.65rem]"
+                          ? "btn-primary inline-flex min-h-9 shrink-0 items-center px-2.5 py-1.5 text-[0.65rem] sm:h-8 sm:py-0"
+                          : "btn-secondary inline-flex min-h-9 shrink-0 items-center px-2.5 py-1.5 text-[0.65rem] sm:h-8 sm:py-0"
                       }
                       prefetch
                     >
@@ -159,14 +173,14 @@ export function ClientesTable({
                     </Link>
                     <Link
                       href={`/dashboard/clientes/${c.id}/estado-cuenta`}
-                      className="btn-secondary inline-flex h-8 shrink-0 items-center px-2 py-0 text-[0.65rem]"
+                      className="btn-secondary inline-flex min-h-9 shrink-0 items-center px-2.5 py-1.5 text-[0.65rem] sm:h-8 sm:py-0"
                       prefetch
                     >
                       Cuenta
                     </Link>
                     <Link
                       href={`/dashboard/clientes/${c.id}`}
-                      className="btn-tertiary inline-flex h-8 shrink-0 items-center px-2 py-0 text-[0.65rem]"
+                      className="btn-tertiary inline-flex min-h-9 shrink-0 items-center px-2.5 py-1.5 text-[0.65rem] sm:h-8 sm:py-0"
                       prefetch
                     >
                       Ficha
@@ -176,7 +190,7 @@ export function ClientesTable({
                       nombre={c.nombre}
                       alExito="refrescar"
                       etiqueta="✕"
-                      className="btn-secondary inline-flex h-8 shrink-0 border-slate-200 px-2 py-0 text-[0.65rem] text-slate-500 hover:border-rose-300 hover:text-rose-600"
+                      className="btn-secondary inline-flex min-h-9 shrink-0 border-slate-200 px-2.5 py-1.5 text-[0.65rem] text-slate-600 hover:border-rose-300 hover:text-rose-600 dark:text-slate-400 sm:h-8 sm:py-0"
                     />
                   </div>
                 </td>

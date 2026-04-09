@@ -460,7 +460,7 @@ export function UploadPdfClient({ initialClienteId, initialObraId }: UploadPdfPr
           archivoId: archivoIdParaImport.trim(),
           comprobante: comprobanteImport.trim(),
           items: items.map((i) => ({
-            codigo: i.codigo.trim() || "-",
+            codigo: "-",
             descripcion: i.descripcion.trim(),
             cantidad: i.cantidad,
             ...(i.precioUnitario !== undefined &&
@@ -721,11 +721,6 @@ export function UploadPdfClient({ initialClienteId, initialObraId }: UploadPdfPr
               <p className="text-xs text-slate-600">
                 Las ventas quedan ligadas al PDF que elijas. PDF escaneados sin texto no se leen solos.
               </p>
-              <p className="text-xs text-emerald-900/80 rounded-lg bg-emerald-50/90 px-3 py-2 ring-1 ring-emerald-200/60">
-                <strong className="font-medium">Códigos:</strong> formato{" "}
-                <span className="font-mono">MARCA-CÓDIGO - descripción</span> o número al final del
-                renglón.
-              </p>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -812,17 +807,15 @@ export function UploadPdfClient({ initialClienteId, initialObraId }: UploadPdfPr
               cargado para este cliente, el sistema avisa y no duplica movimientos.
             </p>
             <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-              <table className="w-full max-w-full border-collapse text-sm sm:min-w-[36rem] lg:table-fixed lg:min-w-[48rem]">
+              <table className="w-full max-w-full border-collapse text-sm sm:min-w-[28rem] lg:table-fixed lg:min-w-[40rem]">
                 <colgroup>
-                  <col className="w-[7rem]" />
                   <col />
                   <col className="w-[5.5rem]" />
                   <col className="w-[6.5rem]" />
                   <col className="w-[4rem]" />
                 </colgroup>
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs text-slate-600">
-                    <th className="px-2 py-2 font-medium">Código</th>
+                  <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs text-slate-700 dark:text-slate-300">
                     <th className="px-2 py-2 font-medium">Descripción</th>
                     <th className="px-2 py-2 font-medium">Cant.</th>
                     <th className="px-2 py-2 font-medium">P. unit.</th>
@@ -832,13 +825,6 @@ export function UploadPdfClient({ initialClienteId, initialObraId }: UploadPdfPr
                 <tbody>
                   {extractedItems.map((row, idx) => (
                     <tr key={idx} className="border-b border-slate-50 align-top">
-                      <td className="px-2 py-1.5">
-                        <input
-                          value={row.codigo}
-                          onChange={(e) => actualizarItem(idx, { codigo: e.target.value })}
-                          className="input-app w-full text-xs py-1.5"
-                        />
-                      </td>
                       <td className="px-2 py-1.5">
                         <textarea
                           value={row.descripcion}
