@@ -95,11 +95,8 @@ export function ChequesClient({ chequesAll }: { chequesAll: ChequeListItem[] }) 
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link href="/dashboard" className="btn-secondary shrink-0">
-            Volver al panel
-          </Link>
-          <Link href="/dashboard/carga" className="btn-tertiary shrink-0">
-            Cargar pago
+          <Link href="/dashboard/carga" className="btn-secondary shrink-0" prefetch={false}>
+            Registrar cobro
           </Link>
         </div>
       </header>
@@ -138,35 +135,6 @@ export function ChequesClient({ chequesAll }: { chequesAll: ChequeListItem[] }) 
           className={`btn-secondary h-9 px-3 py-0 text-xs ${filtro === "sin_vencimiento" ? "" : "opacity-80"}`}
         >
           Sin vto. ({counts.sin_vencimiento})
-        </button>
-      </div>
-
-      <div className="flex justify-end">
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={async () => {
-            const XLSX = await import("xlsx");
-            const ws = XLSX.utils.json_to_sheet(
-              chequesAll.map((c) => ({
-                Cliente: c.clienteNombre,
-                Obra: c.obraNombre ?? "",
-                Banco: c.chequeBanco ?? "",
-                "Nº Cheque": c.chequeNumero ?? "",
-                "Fecha recepción": c.fechaRecepcion ? formatFechaCorta(c.fechaRecepcion) : "",
-                "Vencimiento": c.chequeVencimiento ? formatFechaCorta(c.chequeVencimiento) : "",
-                Monto: c.total,
-                Estado: c.estado,
-                Imputación: formatFechaCorta(c.fecha),
-                Descripción: c.descripcion,
-              })),
-            );
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Cheques");
-            XLSX.writeFile(wb, `cheques-${new Date().toISOString().slice(0, 10)}.xlsx`);
-          }}
-        >
-          Exportar
         </button>
       </div>
 
@@ -266,8 +234,8 @@ export function ChequesClient({ chequesAll }: { chequesAll: ChequeListItem[] }) 
                     <p className="empty-state-hint">
                       Los cheques aparecen cuando cargás un pago con medio «Cheque» desde Cargar movimiento.
                     </p>
-                    <Link href="/dashboard/carga" className="btn-primary mt-3">
-                      Cargar pago
+                    <Link href="/dashboard/carga" className="btn-primary mt-3" prefetch={false}>
+                      Registrar cobro
                     </Link>
                   </div>
                 </td>

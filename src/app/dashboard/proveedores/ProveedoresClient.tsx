@@ -212,12 +212,6 @@ export function ProveedoresClient({
           <button type="button" className="btn-primary" onClick={() => setFormOpen((v) => !v)}>
             {formOpen ? "Cancelar" : "Nuevo proveedor"}
           </button>
-          <Link href="/api/proveedores/export" className="btn-secondary">
-            Exportar Excel
-          </Link>
-          <Link href="/dashboard" className="btn-secondary">
-            Volver al panel
-          </Link>
         </div>
       </header>
 

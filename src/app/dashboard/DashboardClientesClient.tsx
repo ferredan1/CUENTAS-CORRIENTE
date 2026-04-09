@@ -76,7 +76,7 @@ export function DashboardClientesClient({
   initialOrderBy,
   initialClientes,
   initialNextCursor,
-  showCargarPagoButton = true,
+  showCargarPagoButton = false,
   hideSearchBar = false,
   showEstadoCuentaColumn = true,
 }: {
@@ -262,7 +262,7 @@ export function DashboardClientesClient({
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Buscar clientes</h2>
             {showCargarPagoButton ? (
               <Link href="/dashboard/carga" className="btn-primary text-sm">
-                + Cargar pago
+                Registrar cobro
               </Link>
             ) : null}
           </div>

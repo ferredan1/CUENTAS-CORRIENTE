@@ -58,7 +58,7 @@ export function ClientesTable({
   return (
     <div ref={tableWrapRef} className="table-shell touch-pan-x">
       <table
-        className={`table-app w-full max-w-full min-w-[min(100%,42rem)] ${showEstadoCuentaColumn ? "lg:min-w-[720px]" : "lg:min-w-[520px]"}`}
+        className={`table-app w-full max-w-full min-w-[min(100%,42rem)] ${showEstadoCuentaColumn ? "lg:min-w-[640px]" : "lg:min-w-[480px]"}`}
       >
         <thead>
           <tr>
@@ -82,7 +82,6 @@ export function ClientesTable({
                 Saldo <span className="text-slate-400">{iconOrder(orderBy, "saldo")}</span>
               </button>
             </th>
-            <th className="hidden w-[6.5rem] text-right lg:table-cell">Venc. +60d</th>
             <th className="hidden w-[6.5rem] whitespace-nowrap xl:table-cell">Últ. mov.</th>
             {showEstadoCuentaColumn ? (
               <th className="w-[min(13rem,32vw)] max-w-[14rem]">Estado de cuenta</th>
@@ -92,6 +91,7 @@ export function ClientesTable({
         </thead>
         <tbody>
           {rows.map((c) => {
+            const conDeuda = c.saldo > 1e-6;
             const ult =
               c.ultimoMovimientoFecha != null
                 ? formatFechaCorta(
@@ -105,9 +105,9 @@ export function ClientesTable({
                 key={c.id}
                 className={`group border-b border-slate-100 transition-colors ${
                   c.saldo > 0
-                    ? "bg-rose-50/20 dark:bg-rose-950/10"
+                    ? "bg-rose-50/35 dark:bg-rose-950/20"
                     : c.saldo < 0
-                      ? "bg-emerald-50/15 dark:bg-emerald-950/10"
+                      ? "bg-emerald-50/20 dark:bg-emerald-950/15"
                       : ""
                 }`}
               >
@@ -123,17 +123,15 @@ export function ClientesTable({
                   <span
                     className={`inline-flex rounded-md px-2 py-0.5 font-mono text-sm tabular-nums font-semibold ${
                       c.saldo > 0
-                        ? "bg-rose-100/80 text-rose-800"
+                        ? "bg-rose-100/90 text-rose-900 dark:bg-rose-950/40 dark:text-rose-100"
                         : c.saldo < 0
-                          ? "bg-emerald-100/80 text-emerald-900"
-                          : "bg-slate-100 text-slate-700"
+                          ? "bg-emerald-100/80 text-emerald-900 dark:bg-emerald-950/35 dark:text-emerald-200"
+                          : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
                     }`}
                   >
                     {formatMoneda(c.saldo)}
+                    {c.saldo < 0 ? <span className="ml-1 text-[0.65rem] font-normal">a favor</span> : null}
                   </span>
-                </td>
-                <td className="hidden w-[6.5rem] text-right font-mono text-xs tabular-nums text-slate-700 lg:table-cell">
-                  {c.saldoVencido60 > 0 ? formatMoneda(c.saldoVencido60) : "—"}
                 </td>
                 <td className="hidden w-[6.5rem] whitespace-nowrap text-xs text-slate-600 xl:table-cell">{ult}</td>
                 {showEstadoCuentaColumn ? (
@@ -148,6 +146,17 @@ export function ClientesTable({
                 ) : null}
                 <td className="w-[11rem] min-w-[11rem] shrink-0 align-middle text-right">
                   <div className="inline-flex flex-nowrap items-center justify-end gap-1 opacity-100 transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:focus-within:opacity-100">
+                    <Link
+                      href={`/dashboard/carga?clienteId=${encodeURIComponent(c.id)}`}
+                      className={
+                        conDeuda
+                          ? "btn-primary inline-flex h-8 shrink-0 items-center px-2 py-0 text-[0.65rem]"
+                          : "btn-secondary inline-flex h-8 shrink-0 items-center px-2 py-0 text-[0.65rem]"
+                      }
+                      prefetch
+                    >
+                      Registrar cobro
+                    </Link>
                     <Link
                       href={`/dashboard/clientes/${c.id}/estado-cuenta`}
                       className="btn-secondary inline-flex h-8 shrink-0 items-center px-2 py-0 text-[0.65rem]"

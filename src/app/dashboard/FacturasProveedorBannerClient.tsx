@@ -1,7 +1,6 @@
 "use client";
 
 import { formatMoneda } from "@/lib/format";
-import Link from "next/link";
 
 function startOfTodayLocal(): Date {
   const d = new Date();
@@ -47,36 +46,29 @@ export function FacturasProveedorBannerClient({ items }: { items: Item[] }) {
 
   return (
     <section className="card-compact">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Facturas proveedores</h2>
-          <ul className="mt-2 space-y-1.5 text-sm text-slate-800 dark:text-slate-200">
-            {lineas.map((l, i) => (
-              <li key={`${l.nombre}-${l.fv.toISOString()}-${i}`} className="break-words">
-                <span className="font-medium text-slate-900 dark:text-slate-100">{l.nombre}</span>
-                <span className="text-slate-400 dark:text-slate-500"> — </span>
-                <span className="font-mono tabular-nums">{formatMoneda(l.monto)}</span>
-                <span className="text-slate-400 dark:text-slate-500"> — </span>
-                <span
-                  className={
-                    l.estado === "vencida"
-                      ? "font-medium text-rose-700 dark:text-rose-400"
-                      : l.estado === "vence hoy"
-                        ? "font-medium text-amber-900 dark:text-amber-200"
-                        : "text-slate-600 dark:text-slate-400"
-                  }
-                >
-                  {l.estado}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/dashboard/proveedores" className="btn-secondary">
-            Ver proveedores
-          </Link>
-        </div>
+      <div className="min-w-0">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Facturas proveedores</h2>
+        <ul className="mt-2 space-y-1.5 text-sm text-slate-800 dark:text-slate-200">
+          {lineas.map((l, i) => (
+            <li key={`${l.nombre}-${l.fv.toISOString()}-${i}`} className="break-words">
+              <span className="font-medium text-slate-900 dark:text-slate-100">{l.nombre}</span>
+              <span className="text-slate-400 dark:text-slate-500"> — </span>
+              <span className="font-mono tabular-nums">{formatMoneda(l.monto)}</span>
+              <span className="text-slate-400 dark:text-slate-500"> — </span>
+              <span
+                className={
+                  l.estado === "vencida"
+                    ? "font-medium text-rose-700 dark:text-rose-400"
+                    : l.estado === "vence hoy"
+                      ? "font-medium text-amber-800 dark:text-amber-200"
+                      : "text-slate-600 dark:text-slate-400"
+                }
+              >
+                {l.estado}
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

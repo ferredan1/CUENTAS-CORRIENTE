@@ -61,8 +61,8 @@ export default async function ClientesPage({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <NuevoClienteToggle />
-          <Link href="/api/clientes/export" className="btn-secondary" prefetch={false}>
-            Exportar Excel
+          <Link href="/dashboard/carga" className="btn-secondary" prefetch={false}>
+            Registrar cobro
           </Link>
         </div>
       </header>
