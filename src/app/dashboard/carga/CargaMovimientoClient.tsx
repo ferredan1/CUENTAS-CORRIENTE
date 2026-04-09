@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type ClienteOpt = { id: string; nombre: string; saldo?: number };
 type ObraOpt = { id: string; nombre: string };
+type TipoCarga = "pago" | "devolucion" | "ajuste";
 
 function ymdHoyLocal(): string {
   const d = new Date();
@@ -23,20 +24,21 @@ function parseMontoInput(raw: string): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
-/** Solo pagos de cliente. Las ventas vienen del PDF en «Subir PDF». */
-
 export function CargaMovimientoClient({
   initialClienteId,
   initialObraId,
+  initialTipo = "pago",
 }: {
   initialClienteId?: string;
   initialObraId?: string;
+  initialTipo?: TipoCarga;
 }) {
   const router = useRouter();
   const [clientes, setClientes] = useState<ClienteOpt[]>([]);
   const [obras, setObras] = useState<ObraOpt[]>([]);
   const [clienteId, setClienteId] = useState(initialClienteId ?? "");
   const [obraId, setObraId] = useState(initialObraId ?? "");
+  const [tipo, setTipo] = useState<TipoCarga>(initialTipo);
   const [fecha, setFecha] = useState(ymdHoyLocal);
   const [medioPago, setMedioPago] = useState<
     "efectivo" | "transferencia" | "cheque" | "tarjeta_debito" | "tarjeta_credito"
@@ -109,42 +111,63 @@ export function CargaMovimientoClient({
     setErr(null);
 
     const montoNum = parseMontoInput(montoStr);
-    const tieneComp = comprobante.trim().length > 0;
-    if (!tieneComp && (!Number.isFinite(montoNum) || montoNum <= 0)) {
-      setErr("Indicá un importe mayor a cero, o cargá un comprobante para otro tipo de imputación.");
+    if (!Number.isFinite(montoNum)) {
+      setErr("Indicá un importe válido.");
       return;
     }
-    if (tieneComp && montoStr.trim() !== "" && (!Number.isFinite(montoNum) || montoNum < 0)) {
-      setErr("El importe no es válido.");
+    if ((tipo === "pago" || tipo === "devolucion") && montoNum <= 0) {
+      setErr("El importe debe ser mayor a cero.");
+      return;
+    }
+    if (tipo === "ajuste" && montoNum === 0) {
+      setErr("El ajuste no puede ser 0.");
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch("/api/pagos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clienteId,
-          obraId: obraId || null,
-          fecha: new Date(`${fecha}T12:00:00`).toISOString(),
-          comprobante: comprobante || null,
-          descripcion: descripcion || undefined,
-          monto: montoStr.trim() ? montoNum : undefined,
-          medioPago,
-          ...(medioPago === "cheque"
-            ? {
-                chequeNumero: chequeNumero.trim(),
-                chequeBanco: chequeBanco.trim(),
-                chequeVencimiento: chequeVencimiento.trim(),
-                fechaRecepcion: fechaRecepcionCheque.trim(),
-              }
-            : {}),
-        }),
-      });
+      const res =
+        tipo === "pago"
+          ? await fetch("/api/pagos", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                clienteId,
+                obraId: obraId || null,
+                fecha: new Date(`${fecha}T12:00:00`).toISOString(),
+                comprobante: comprobante || null,
+                descripcion: descripcion || undefined,
+                monto: montoNum,
+                medioPago,
+                ...(medioPago === "cheque"
+                  ? {
+                      chequeNumero: chequeNumero.trim(),
+                      chequeBanco: chequeBanco.trim(),
+                      chequeVencimiento: chequeVencimiento.trim(),
+                      fechaRecepcion: fechaRecepcionCheque.trim(),
+                    }
+                  : {}),
+              }),
+            })
+          : await fetch("/api/movimientos", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                clienteId,
+                obraId: obraId || null,
+                tipo,
+                fecha: new Date(`${fecha}T12:00:00`).toISOString(),
+                comprobante: comprobante.trim() || null,
+                descripcion:
+                  descripcion.trim() ||
+                  (tipo === "devolucion" ? "Devolución manual" : "Ajuste manual de saldo"),
+                cantidad: 1,
+                precioUnitario: tipo === "devolucion" ? Math.abs(montoNum) : montoNum,
+              }),
+            });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "Error");
-      markPagoCargadoForNextDashboardPage();
+      if (tipo === "pago") markPagoCargadoForNextDashboardPage();
       if (obraId) router.push(`/dashboard/obras/${obraId}`);
       else if (clienteId) router.push(`/dashboard/clientes/${clienteId}`);
       else router.push("/dashboard");
@@ -158,8 +181,24 @@ export function CargaMovimientoClient({
   return (
     <form onSubmit={onSubmit} className="card space-y-6">
       <div>
-        <p className="section-title mb-3">1 · Cliente, obra, fecha e importe</p>
+        <p className="section-title mb-3">1 · Tipo, cliente, obra, fecha e importe</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className="label-field">Tipo de movimiento</label>
+            <select
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value as TipoCarga)}
+              className="select-app w-full"
+            >
+              <option value="pago">Pago</option>
+              <option value="devolucion">Devolución</option>
+              <option value="ajuste">Ajuste</option>
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              Devolución resta saldo. Ajuste puede sumar o restar según el signo del importe.
+            </p>
+          </div>
+
           <div className="sm:col-span-2">
             <label className="label-field">Cliente</label>
             <select
@@ -235,7 +274,13 @@ export function CargaMovimientoClient({
           </div>
 
           <div>
-            <label className="label-field">Importe del pago</label>
+            <label className="label-field">
+              {tipo === "pago"
+                ? "Importe del pago"
+                : tipo === "devolucion"
+                  ? "Importe de la devolución"
+                  : "Importe del ajuste"}
+            </label>
             <input
               className="input-app w-full font-mono tabular-nums"
               inputMode="decimal"
@@ -244,10 +289,9 @@ export function CargaMovimientoClient({
               value={montoStr}
               onChange={(e) => setMontoStr(e.target.value)}
             />
-            {comprobante.trim() ? (
+            {tipo === "ajuste" ? (
               <p className="mt-1 text-xs text-slate-500">
-                Con comprobante cargado, podés dejar el importe vacío si aplica la lógica de cancelación completa del
-                comprobante.
+                En ajustes podés usar signo negativo para restar saldo (ej: -1500).
               </p>
             ) : (
               <p className="mt-1 text-xs text-slate-500">Usá coma o punto para decimales.</p>
@@ -256,83 +300,85 @@ export function CargaMovimientoClient({
         </div>
       </div>
 
-      <div className="space-y-4 border-t border-slate-100 pt-5">
-        <p className="section-title">2 · Medio de pago</p>
-        <div className="space-y-4 rounded-xl border border-slate-200/90 bg-slate-50/60 p-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="sm:col-span-3">
-              <label className="label-field">Forma de pago</label>
-              <select
-                value={medioPago}
-                onChange={(e) =>
-                  setMedioPago(
-                    e.target.value as
-                      | "efectivo"
-                      | "transferencia"
-                      | "cheque"
-                      | "tarjeta_debito"
-                      | "tarjeta_credito",
-                  )
-                }
-                className="select-app capitalize"
-              >
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="cheque">Cheque</option>
-                <option value="tarjeta_debito">Tarjeta débito</option>
-                <option value="tarjeta_credito">Tarjeta crédito</option>
-              </select>
+      {tipo === "pago" ? (
+        <div className="space-y-4 border-t border-slate-100 pt-5">
+          <p className="section-title">2 · Medio de pago</p>
+          <div className="space-y-4 rounded-xl border border-slate-200/90 bg-slate-50/60 p-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="sm:col-span-3">
+                <label className="label-field">Forma de pago</label>
+                <select
+                  value={medioPago}
+                  onChange={(e) =>
+                    setMedioPago(
+                      e.target.value as
+                        | "efectivo"
+                        | "transferencia"
+                        | "cheque"
+                        | "tarjeta_debito"
+                        | "tarjeta_credito",
+                    )
+                  }
+                  className="select-app capitalize"
+                >
+                  <option value="efectivo">Efectivo</option>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="tarjeta_debito">Tarjeta débito</option>
+                  <option value="tarjeta_credito">Tarjeta crédito</option>
+                </select>
+              </div>
+              {medioPago === "cheque" && (
+                <>
+                  <div className="sm:col-span-3">
+                    <label className="label-field">Banco</label>
+                    <input
+                      required
+                      value={chequeBanco}
+                      onChange={(e) => setChequeBanco(e.target.value)}
+                      className="input-app"
+                      placeholder="Ej. Nación / Provincia / Galicia"
+                    />
+                  </div>
+                  <div>
+                    <label className="label-field">Número de cheque</label>
+                    <input
+                      required
+                      value={chequeNumero}
+                      onChange={(e) => setChequeNumero(e.target.value)}
+                      className="input-app font-mono"
+                      placeholder="Ej. 00012345"
+                    />
+                  </div>
+                  <div>
+                    <label className="label-field">Vencimiento del cheque</label>
+                    <input
+                      type="date"
+                      required
+                      value={chequeVencimiento}
+                      onChange={(e) => setChequeVencimiento(e.target.value)}
+                      className="input-app"
+                    />
+                  </div>
+                  <div>
+                    <label className="label-field">Fecha en que se recibió</label>
+                    <input
+                      type="date"
+                      required
+                      value={fechaRecepcionCheque}
+                      onChange={(e) => setFechaRecepcionCheque(e.target.value)}
+                      className="input-app"
+                    />
+                  </div>
+                </>
+              )}
             </div>
-            {medioPago === "cheque" && (
-              <>
-                <div className="sm:col-span-3">
-                  <label className="label-field">Banco</label>
-                  <input
-                    required
-                    value={chequeBanco}
-                    onChange={(e) => setChequeBanco(e.target.value)}
-                    className="input-app"
-                    placeholder="Ej. Nación / Provincia / Galicia"
-                  />
-                </div>
-                <div>
-                  <label className="label-field">Número de cheque</label>
-                  <input
-                    required
-                    value={chequeNumero}
-                    onChange={(e) => setChequeNumero(e.target.value)}
-                    className="input-app font-mono"
-                    placeholder="Ej. 00012345"
-                  />
-                </div>
-                <div>
-                  <label className="label-field">Vencimiento del cheque</label>
-                  <input
-                    type="date"
-                    required
-                    value={chequeVencimiento}
-                    onChange={(e) => setChequeVencimiento(e.target.value)}
-                    className="input-app"
-                  />
-                </div>
-                <div>
-                  <label className="label-field">Fecha en que se recibió</label>
-                  <input
-                    type="date"
-                    required
-                    value={fechaRecepcionCheque}
-                    onChange={(e) => setFechaRecepcionCheque(e.target.value)}
-                    className="input-app"
-                  />
-                </div>
-              </>
-            )}
           </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="border-t border-slate-100 pt-5">
-        <p className="section-title mb-3">3 · Referencia</p>
+        <p className="section-title mb-3">{tipo === "pago" ? "3 · Referencia" : "2 · Referencia"}</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="label-field">Comprobante</label>
@@ -346,12 +392,12 @@ export function CargaMovimientoClient({
         <div className="mt-4">
           <label className="label-field">Descripción</label>
           <input
-            required={!comprobante.trim()}
+            required={tipo !== "pago" || !comprobante.trim()}
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
             className="input-app"
           />
-          {comprobante.trim() ? (
+          {comprobante.trim() && tipo === "pago" ? (
             <p className="mt-1 text-xs text-slate-500">
               Si dejás la descripción vacía, se usa «Pago comprobante {comprobante.trim()}».
             </p>
@@ -359,7 +405,7 @@ export function CargaMovimientoClient({
         </div>
       </div>
 
-      {medioPago === "cheque" && (
+      {tipo === "pago" && medioPago === "cheque" && (
         <p className="text-[0.7rem] text-slate-500">
           Cheque: quedan guardados número, vencimiento y recepción para seguimiento.
         </p>
@@ -373,7 +419,13 @@ export function CargaMovimientoClient({
 
       <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-5">
         <button type="submit" disabled={loading} className="btn-primary">
-          {loading ? "Guardando…" : "Guardar pago"}
+          {loading
+            ? "Guardando…"
+            : tipo === "pago"
+              ? "Guardar pago"
+              : tipo === "devolucion"
+                ? "Guardar devolución"
+                : "Guardar ajuste"}
         </button>
       </div>
     </form>

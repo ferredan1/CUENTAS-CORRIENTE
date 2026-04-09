@@ -179,6 +179,12 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
           <Link href={`/dashboard/carga?clienteId=${c.id}`} className="btn-primary">
             Registrar cobro
           </Link>
+          <Link href={`/dashboard/carga?clienteId=${c.id}&tipo=devolucion`} className="btn-secondary">
+            Agregar devolución
+          </Link>
+          <Link href={`/dashboard/carga?clienteId=${c.id}&tipo=ajuste`} className="btn-secondary">
+            Agregar ajuste
+          </Link>
           <Link
             href={`/dashboard/clientes/${c.id}/estado-cuenta`}
             target="_blank"

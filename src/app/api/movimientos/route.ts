@@ -50,15 +50,6 @@ export async function POST(req: NextRequest) {
   const body = parsed.data;
 
   const tipo = body.tipo ?? "ajuste";
-  if (tipo === "devolucion" || tipo === "ajuste") {
-    return NextResponse.json(
-      {
-        error:
-          "Ya no se registran devoluciones ni ajustes manuales. Usá «Cargar pago» para cobros del cliente.",
-      },
-      { status: 400 },
-    );
-  }
 
   try {
     let fecha: Date;
