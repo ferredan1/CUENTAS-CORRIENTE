@@ -139,11 +139,6 @@ export function ClientesTable({
                   >
                     <span>{formatMoneda(c.saldo)}</span>
                   </span>
-                  {c.saldo < 0 ? (
-                    <div className="mt-1 text-[0.65rem] font-medium leading-tight text-emerald-700 dark:text-emerald-300">
-                      A favor
-                    </div>
-                  ) : null}
                 </td>
                 <td className="hidden w-[5.5rem] whitespace-nowrap p-2 text-xs text-slate-700 dark:text-slate-300 md:table-cell sm:p-3">
                   {ult}

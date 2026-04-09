@@ -91,29 +91,30 @@ export function EstadoCuentaControls({
       const filename = `estado-cuenta-${base}.pdf`;
       const file = new File([blob], filename, { type: "application/pdf" });
 
+      // Si hay teléfono, priorizamos abrir chat directo al número cargado
+      // (Web Share suele pedir elegir contacto y no respeta el destino).
+      if (telefono?.trim()) {
+        downloadBlob(blob, filename);
+        openWhatsappFallback();
+        return;
+      }
+
       const canShareFiles =
         typeof navigator !== "undefined" &&
         typeof navigator.canShare === "function" &&
         navigator.canShare({ files: [file] });
-
       if (canShareFiles && typeof navigator.share === "function") {
-        try {
-          await navigator.share({
-            files: [file],
-            title: "Estado de cuenta",
-            text: clienteNombre,
-          });
-        } catch (e) {
-          if (e instanceof DOMException && e.name === "AbortError") return;
-          downloadBlob(blob, filename);
-          openWhatsappFallback();
-        }
+        await navigator.share({
+          files: [file],
+          title: "Estado de cuenta",
+          text: clienteNombre,
+        });
         return;
       }
 
       downloadBlob(blob, filename);
-      openWhatsappFallback();
-    } catch {
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       window.alert("No se pudo generar el PDF. Probá de nuevo.");
     } finally {
       setWaBusy(false);
@@ -172,7 +173,7 @@ export function EstadoCuentaControls({
             className="btn-secondary inline-flex min-h-10 flex-1 items-center justify-center sm:flex-none disabled:opacity-60"
             title={
               telefono
-                ? "Genera un PDF y lo comparte (o lo descarga y abre WhatsApp)"
+                ? "Genera el PDF, lo descarga y abre WhatsApp al número del cliente"
                 : "Genera y comparte el PDF; en PC puede descargarse para adjuntarlo a mano"
             }
             onClick={() => void enviarPdfWhatsapp()}
