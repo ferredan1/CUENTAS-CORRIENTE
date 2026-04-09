@@ -5,6 +5,20 @@ import { NextResponse } from "next/server";
 
 type Params = { params: Promise<{ id: string }> };
 
+function parseOptionalDay(s: string | null | undefined): Date | null {
+  if (!s?.trim()) return null;
+  const d = new Date(`${s.trim()}T12:00:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+const MEDIOS = new Set([
+  "efectivo",
+  "transferencia",
+  "cheque",
+  "tarjeta_debito",
+  "tarjeta_credito",
+]);
+
 export async function POST(req: Request, { params }: Params) {
   const auth = await requireAuth();
   if (auth.error) return auth.error;
@@ -13,8 +27,26 @@ export async function POST(req: Request, { params }: Params) {
   const body = (await req.json().catch(() => ({}))) as {
     medioPago?: string;
     movimientoId?: string;
+    chequeNumero?: string | null;
+    chequeBanco?: string | null;
+    chequeVencimiento?: string | null;
+    fechaRecepcion?: string | null;
   };
-  const medioPago = body.medioPago === "transferencia" ? "transferencia" : "efectivo";
+  const medioRaw = (body.medioPago ?? "").trim().toLowerCase();
+  const medioPago = MEDIOS.has(medioRaw) ? medioRaw : "efectivo";
+  const chequeNumero = body.chequeNumero?.trim() || null;
+  const chequeBanco = body.chequeBanco?.trim() || null;
+  const chequeVencimiento = parseOptionalDay(body.chequeVencimiento ?? null);
+  const fechaRecepcion = parseOptionalDay(body.fechaRecepcion ?? null);
+
+  if (medioPago === "cheque") {
+    if (!chequeBanco || !chequeNumero || !chequeVencimiento || !fechaRecepcion) {
+      return NextResponse.json(
+        { error: "Para cheque indicá banco, número, vencimiento y fecha de recepción." },
+        { status: 400 },
+      );
+    }
+  }
 
   const archivo = await prisma.archivo.findFirst({
     where: { id },
@@ -49,10 +81,10 @@ export async function POST(req: Request, { params }: Params) {
       comprobante: comp,
       codigoProducto: null,
       medioPago,
-      chequeNumero: null,
-      chequeBanco: null,
-      chequeVencimiento: null,
-      fechaRecepcion: null,
+      chequeNumero: medioPago === "cheque" ? chequeNumero : null,
+      chequeBanco: medioPago === "cheque" ? chequeBanco : null,
+      chequeVencimiento: medioPago === "cheque" ? chequeVencimiento : null,
+      fechaRecepcion: medioPago === "cheque" ? fechaRecepcion : null,
       descripcion: `Pago ítem comprobante ${comp ?? "s/n"} (marcado desde movimientos)`,
       cantidad: 1,
       precioUnitario: total,
@@ -91,10 +123,10 @@ export async function POST(req: Request, { params }: Params) {
     comprobante,
     codigoProducto: null,
     medioPago,
-    chequeNumero: null,
-    chequeBanco: null,
-    chequeVencimiento: null,
-    fechaRecepcion: null,
+    chequeNumero: medioPago === "cheque" ? chequeNumero : null,
+    chequeBanco: medioPago === "cheque" ? chequeBanco : null,
+    chequeVencimiento: medioPago === "cheque" ? chequeVencimiento : null,
+    fechaRecepcion: medioPago === "cheque" ? fechaRecepcion : null,
     descripcion: `Pago comprobante ${comprobante ?? "s/n"} (marcado desde comprobantes)`,
     cantidad: 1,
     precioUnitario: totalAPagar,

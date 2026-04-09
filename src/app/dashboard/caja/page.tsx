@@ -1,6 +1,6 @@
 import { getServerUserId } from "@/lib/get-server-user-id";
 import { prisma } from "@/lib/prisma";
-import { formatMoneda } from "@/lib/format";
+import { formatFechaCorta, formatMoneda } from "@/lib/format";
 import { parseQueryDayEnd, parseQueryDayStart } from "@/lib/dates";
 import { redirect } from "next/navigation";
 
@@ -16,23 +16,25 @@ export default async function CajaPage({
   const desde = parseQueryDayStart(sp.desde ?? null);
   const hasta = parseQueryDayEnd(sp.hasta ?? null);
 
-  const grouped = await prisma.movimiento.groupBy({
-    by: ["medioPago"],
+  const movimientos = await prisma.movimiento.findMany({
     where: {
       tipo: "pago",
       ...(desde || hasta
         ? { fecha: { ...(desde ? { gte: desde } : {}), ...(hasta ? { lte: hasta } : {}) } }
         : {}),
     },
-    _sum: { total: true },
+    orderBy: [{ fecha: "desc" }, { createdAt: "desc" }],
+    include: { cliente: { select: { id: true, nombre: true } } },
   });
 
-  const rows = grouped
-    .map((g) => ({
-      medioPago: g.medioPago ?? "sin_medio",
-      total: Number(g._sum?.total ?? 0),
-    }))
-    .sort((a, b) => b.total - a.total);
+  const rows = movimientos.map((m) => ({
+    id: m.id,
+    fecha: m.fecha,
+    cliente: m.cliente.nombre,
+    descripcion: m.descripcion,
+    medioPago: m.medioPago ?? "sin_medio",
+    total: Number(m.total ?? 0),
+  }));
 
   const totalDia = rows.reduce((s, r) => s + r.total, 0);
 
@@ -73,13 +75,19 @@ export default async function CajaPage({
         <table className="table-app w-full">
           <thead>
             <tr>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th>Descripción</th>
               <th>Medio de pago</th>
               <th className="text-right">Total</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.medioPago}>
+              <tr key={r.id}>
+                <td className="whitespace-nowrap text-slate-600">{formatFechaCorta(r.fecha)}</td>
+                <td className="font-medium">{r.cliente}</td>
+                <td className="text-slate-700">{r.descripcion}</td>
                 <td className="capitalize text-slate-700">{r.medioPago.replace(/_/g, " ")}</td>
                 <td className="text-right font-mono tabular-nums font-semibold text-slate-800">
                   {formatMoneda(r.total)}
@@ -87,14 +95,14 @@ export default async function CajaPage({
               </tr>
             ))}
             <tr className="border-t-2 border-slate-200">
-              <td className="font-semibold text-slate-700">Total</td>
+              <td colSpan={4} className="font-semibold text-slate-700">Total</td>
               <td className="text-right font-mono tabular-nums font-bold text-slate-900">
                 {formatMoneda(totalDia)}
               </td>
             </tr>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={2} className="py-10 text-center text-sm text-slate-500">
+                <td colSpan={5} className="py-10 text-center text-sm text-slate-500">
                   No hay cobros imputados para el período seleccionado.
                 </td>
               </tr>

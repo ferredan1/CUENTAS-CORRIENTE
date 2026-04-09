@@ -22,9 +22,15 @@ type Props = {
 
 export function ModalAplicarPago({ open, onClose, clienteId, obraId, ventasPendientes, onSuccess }: Props) {
   const [importeTotal, setImporteTotal] = useState("");
-  const [medioPago, setMedioPago] = useState<"efectivo" | "transferencia">("efectivo");
+  const [medioPago, setMedioPago] = useState<
+    "efectivo" | "transferencia" | "cheque" | "tarjeta_debito" | "tarjeta_credito"
+  >("efectivo");
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
   const [comprobantePago, setComprobantePago] = useState("");
+  const [chequeBanco, setChequeBanco] = useState("");
+  const [chequeNumero, setChequeNumero] = useState("");
+  const [chequeVencimiento, setChequeVencimiento] = useState("");
+  const [fechaRecepcion, setFechaRecepcion] = useState("");
   const [importesPorVenta, setImportesPorVenta] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +42,10 @@ export function ModalAplicarPago({ open, onClose, clienteId, obraId, ventasPendi
     setComprobantePago("");
     setFecha(new Date().toISOString().slice(0, 10));
     setMedioPago("efectivo");
+    setChequeBanco("");
+    setChequeNumero("");
+    setChequeVencimiento("");
+    setFechaRecepcion("");
     const init: Record<string, string> = {};
     for (const v of ventasPendientes) init[v.id] = "";
     setImportesPorVenta(init);
@@ -76,6 +86,11 @@ export function ModalAplicarPago({ open, onClose, clienteId, obraId, ventasPendi
     if (sumaAplicaciones > totalNum + 0.001) {
       return "La suma imputada no puede superar el importe total del pago.";
     }
+    if (medioPago === "cheque") {
+      if (!chequeBanco.trim() || !chequeNumero.trim() || !chequeVencimiento || !fechaRecepcion) {
+        return "Para cheque completá banco, número, vencimiento y fecha de recepción.";
+      }
+    }
     for (const v of ventasPendientes) {
       const raw = importesPorVenta[v.id]?.trim() ?? "";
       if (raw === "") continue;
@@ -86,7 +101,17 @@ export function ModalAplicarPago({ open, onClose, clienteId, obraId, ventasPendi
       }
     }
     return null;
-  }, [totalNum, sumaAplicaciones, ventasPendientes, importesPorVenta]);
+  }, [
+    totalNum,
+    sumaAplicaciones,
+    ventasPendientes,
+    importesPorVenta,
+    medioPago,
+    chequeBanco,
+    chequeNumero,
+    chequeVencimiento,
+    fechaRecepcion,
+  ]);
 
   async function submit() {
     const msg = validar();
@@ -119,6 +144,10 @@ export function ModalAplicarPago({ open, onClose, clienteId, obraId, ventasPendi
           comprobante: comprobantePago.trim() || null,
           descripcion: `Pago imputado (${aplicaciones.length} venta${aplicaciones.length === 1 ? "" : "s"})`,
           aplicaciones,
+          chequeBanco: medioPago === "cheque" ? chequeBanco : null,
+          chequeNumero: medioPago === "cheque" ? chequeNumero : null,
+          chequeVencimiento: medioPago === "cheque" ? chequeVencimiento : null,
+          fechaRecepcion: medioPago === "cheque" ? fechaRecepcion : null,
         }),
       });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -175,10 +204,22 @@ export function ModalAplicarPago({ open, onClose, clienteId, obraId, ventasPendi
             <select
               className="select-app w-full"
               value={medioPago}
-              onChange={(e) => setMedioPago(e.target.value as "efectivo" | "transferencia")}
+              onChange={(e) =>
+                setMedioPago(
+                  e.target.value as
+                    | "efectivo"
+                    | "transferencia"
+                    | "cheque"
+                    | "tarjeta_debito"
+                    | "tarjeta_credito",
+                )
+              }
             >
               <option value="efectivo">Efectivo</option>
               <option value="transferencia">Transferencia</option>
+              <option value="tarjeta_debito">Tarjeta débito</option>
+              <option value="tarjeta_credito">Tarjeta crédito</option>
+              <option value="cheque">Cheque</option>
             </select>
           </div>
           <div>
@@ -191,6 +232,26 @@ export function ModalAplicarPago({ open, onClose, clienteId, obraId, ventasPendi
             />
           </div>
         </div>
+        {medioPago === "cheque" ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="label-field">Banco</label>
+              <input className="input-app w-full" value={chequeBanco} onChange={(e) => setChequeBanco(e.target.value)} />
+            </div>
+            <div>
+              <label className="label-field">N° cheque</label>
+              <input className="input-app w-full" value={chequeNumero} onChange={(e) => setChequeNumero(e.target.value)} />
+            </div>
+            <div>
+              <label className="label-field">Vencimiento</label>
+              <input type="date" className="input-app w-full" value={chequeVencimiento} onChange={(e) => setChequeVencimiento(e.target.value)} />
+            </div>
+            <div>
+              <label className="label-field">Fecha de recepción</label>
+              <input type="date" className="input-app w-full" value={fechaRecepcion} onChange={(e) => setFechaRecepcion(e.target.value)} />
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Imputar a ventas pendientes</p>

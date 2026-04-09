@@ -155,7 +155,13 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
     const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
     const [showNotasCols, setShowNotasCols] = useState(false);
     const [marcarPagoRow, setMarcarPagoRow] = useState<MovRow | null>(null);
-    const [marcarPagoMedio, setMarcarPagoMedio] = useState<"efectivo" | "transferencia">("efectivo");
+    const [marcarPagoMedio, setMarcarPagoMedio] = useState<
+      "efectivo" | "transferencia" | "cheque" | "tarjeta_debito" | "tarjeta_credito"
+    >("efectivo");
+    const [marcarPagoChequeBanco, setMarcarPagoChequeBanco] = useState("");
+    const [marcarPagoChequeNumero, setMarcarPagoChequeNumero] = useState("");
+    const [marcarPagoChequeVencimiento, setMarcarPagoChequeVencimiento] = useState("");
+    const [marcarPagoFechaRecepcion, setMarcarPagoFechaRecepcion] = useState("");
     const [marcarPagoLoading, setMarcarPagoLoading] = useState(false);
     const [modalPagoParcialOpen, setModalPagoParcialOpen] = useState(false);
 
@@ -348,7 +354,14 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
             method: "POST",
             headers: { "content-type": "application/json" },
             credentials: "same-origin",
-            body: JSON.stringify({ movimientoId: r.id, medioPago: marcarPagoMedio }),
+            body: JSON.stringify({
+              movimientoId: r.id,
+              medioPago: marcarPagoMedio,
+              chequeBanco: marcarPagoMedio === "cheque" ? marcarPagoChequeBanco : null,
+              chequeNumero: marcarPagoMedio === "cheque" ? marcarPagoChequeNumero : null,
+              chequeVencimiento: marcarPagoMedio === "cheque" ? marcarPagoChequeVencimiento : null,
+              fechaRecepcion: marcarPagoMedio === "cheque" ? marcarPagoFechaRecepcion : null,
+            }),
           });
           const data = (await res.json().catch(() => null)) as { error?: string } | null;
           if (!res.ok) throw new Error(data?.error ?? "No se pudo registrar el pago");
@@ -365,6 +378,10 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
               medioPago: marcarPagoMedio,
               descripcion: `Pago ${r.comprobante ?? "venta"} (desde grilla)`,
               liquidarVentaId: r.id,
+              chequeBanco: marcarPagoMedio === "cheque" ? marcarPagoChequeBanco : null,
+              chequeNumero: marcarPagoMedio === "cheque" ? marcarPagoChequeNumero : null,
+              chequeVencimiento: marcarPagoMedio === "cheque" ? marcarPagoChequeVencimiento : null,
+              fechaRecepcion: marcarPagoMedio === "cheque" ? marcarPagoFechaRecepcion : null,
             }),
           });
           const data = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -372,6 +389,10 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
         }
         setMarcarPagoRow(null);
         setMarcarPagoMedio("efectivo");
+        setMarcarPagoChequeBanco("");
+        setMarcarPagoChequeNumero("");
+        setMarcarPagoChequeVencimiento("");
+        setMarcarPagoFechaRecepcion("");
         await load();
       } catch (e) {
         setErr(e instanceof Error ? e.message : "Error");
@@ -530,11 +551,15 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
                   className="btn-tertiary h-7 px-2 py-0 text-[0.65rem]"
                   onClick={() => {
                     setMarcarPagoMedio("efectivo");
+                    setMarcarPagoChequeBanco("");
+                    setMarcarPagoChequeNumero("");
+                    setMarcarPagoChequeVencimiento("");
+                    setMarcarPagoFechaRecepcion("");
                     setMarcarPagoRow(r);
                   }}
                   title={
                     r.archivoId
-                      ? "Registrar pago solo de esta línea (PDF). Elegí efectivo o transferencia en el panel inferior."
+                      ? "Registrar pago solo de esta línea (PDF). Elegí el medio de pago en el panel inferior."
                       : "Registrar pago solo de esta línea. Para cheque u otros medios usá Cargar pago."
                   }
                 >
@@ -833,14 +858,52 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
             <select
               value={marcarPagoMedio}
               onChange={(e) =>
-                setMarcarPagoMedio(e.target.value as "efectivo" | "transferencia")
+                setMarcarPagoMedio(
+                  e.target.value as
+                    | "efectivo"
+                    | "transferencia"
+                    | "cheque"
+                    | "tarjeta_debito"
+                    | "tarjeta_credito",
+                )
               }
               className="select-app h-8 py-0 text-xs"
               aria-label="Medio de pago"
             >
               <option value="efectivo">Efectivo</option>
               <option value="transferencia">Transferencia</option>
+              <option value="tarjeta_debito">Tarjeta débito</option>
+              <option value="tarjeta_credito">Tarjeta crédito</option>
+              <option value="cheque">Cheque</option>
             </select>
+            {marcarPagoMedio === "cheque" ? (
+              <>
+                <input
+                  className="input-app h-8 min-w-[8rem] py-0 text-xs"
+                  placeholder="Banco"
+                  value={marcarPagoChequeBanco}
+                  onChange={(e) => setMarcarPagoChequeBanco(e.target.value)}
+                />
+                <input
+                  className="input-app h-8 min-w-[8rem] py-0 text-xs"
+                  placeholder="N° cheque"
+                  value={marcarPagoChequeNumero}
+                  onChange={(e) => setMarcarPagoChequeNumero(e.target.value)}
+                />
+                <input
+                  type="date"
+                  className="input-app h-8 py-0 text-xs"
+                  value={marcarPagoChequeVencimiento}
+                  onChange={(e) => setMarcarPagoChequeVencimiento(e.target.value)}
+                />
+                <input
+                  type="date"
+                  className="input-app h-8 py-0 text-xs"
+                  value={marcarPagoFechaRecepcion}
+                  onChange={(e) => setMarcarPagoFechaRecepcion(e.target.value)}
+                />
+              </>
+            ) : null}
             <button
               type="button"
               className="btn-primary h-8 px-3 text-xs"
