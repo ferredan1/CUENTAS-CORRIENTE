@@ -41,6 +41,8 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
   const mostrarColObra = obras.length > 0 && !obraId && !sinObra;
 
   const totalResumenObras = resumenSaldosPorObra.reduce((sum, r) => sum + r.saldo, 0);
+  const saldoFinalDetalle =
+    movimientosConSaldo.length > 0 ? movimientosConSaldo[movimientosConSaldo.length - 1]!.saldo : saldoAnterior;
 
   const fmtCant = (m: (typeof movimientosConSaldo)[number]) => {
     const n = Number(m.cantidad);
@@ -216,6 +218,17 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
                   <td className="py-3 text-right font-mono text-sm">
                     <div className="text-slate-700">Ventas: {formatMoneda(totalVentasPeriodo)}</div>
                     <div className="text-emerald-700">Pagos: −{formatMoneda(totalPagosPeriodo)}</div>
+                    <div
+                      className={`font-semibold ${
+                        saldoFinalDetalle > 0
+                          ? "text-rose-700"
+                          : saldoFinalDetalle < 0
+                            ? "text-emerald-700"
+                            : "text-slate-700"
+                      }`}
+                    >
+                      Total general: {formatMoneda(saldoFinalDetalle)}
+                    </div>
                   </td>
                 </tr>
               </tfoot>

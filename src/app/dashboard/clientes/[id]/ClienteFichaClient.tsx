@@ -110,39 +110,6 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
     window.history.replaceState(null, "", `${base}${nextHash}`);
   }, [tab]);
 
-  const badgeSaldo = useMemo(() => {
-    if (c.saldo > 0) return { text: "Saldo a cobrar", className: "badge-debt" };
-    if (c.saldo < 0) return { text: "Saldo a favor", className: "badge-ok" };
-    return { text: "Sin deuda", className: "badge-ok" };
-  }, [c.saldo]);
-
-  const badgeCobranza = useMemo(() => {
-    if (!(c.saldo > 0)) return null;
-    if (c.estadoCobranza === "en_gestion")
-      return {
-        text: "En gestión",
-        className:
-          "rounded-md bg-yellow-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-yellow-950 dark:bg-yellow-950/35 dark:text-yellow-100",
-      };
-    if (c.estadoCobranza === "moroso")
-      return {
-        text: "Moroso",
-        className:
-          "rounded-md bg-orange-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-orange-950 dark:bg-orange-950/40 dark:text-orange-100",
-      };
-    if (c.estadoCobranza === "incobrable")
-      return {
-        text: "Incobrable",
-        className:
-          "rounded-md bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-red-900 dark:bg-red-950/45 dark:text-red-200",
-      };
-    return {
-      text: "Al día",
-      className:
-        "rounded-md bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-900 dark:bg-emerald-950/45 dark:text-emerald-200",
-    };
-  }, [c.estadoCobranza, c.saldo]);
-
   const comprobantesRecientes = c.archivos.slice(0, 5);
 
   function estadoArchivo(a: ArchivoDTO): "Sin ventas" | "Pagado" | "Parcial" | "Pendiente" {
@@ -251,12 +218,6 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
                 }`}
               >
                 {formatMoneda(c.saldo)}
-              </p>
-              <p className="mt-2">
-                <span className={badgeSaldo.className}>{badgeSaldo.text}</span>
-                {badgeCobranza ? (
-                  <span className={`ml-2 ${badgeCobranza.className}`}>{badgeCobranza.text}</span>
-                ) : null}
               </p>
               {c.totalChequesPendientes > 0 && (
                 <div className="mt-3 rounded-lg border border-amber-200/70 bg-amber-50/70 px-3 py-2">
