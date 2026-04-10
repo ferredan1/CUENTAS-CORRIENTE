@@ -91,29 +91,71 @@ function lineaPareceSoloCodigoInterno(line: string): boolean {
   return /^[A-Z]{1,3}\d{2,6}[A-Z0-9]{0,3}$/i.test(t);
 }
 
+/**
+ * Línea inmediatamente sobre los importes que parece cola de descripción partida
+ * (p. ej. «EMPN1H05», «65MM 5919»), no un título de ítem nuevo.
+ */
+function lineaPareceFragmentoContinuacionInferior(line: string): boolean {
+  const t = line.trim();
+  if (t.length === 0) return false;
+  const words = t.split(/\s+/).filter(Boolean);
+  if (t.length <= 56 && words.length <= 4) return true;
+  if (/^\d{1,3}\s*MM\b/i.test(t)) return true;
+  if (/^[A-Z0-9][A-Z0-9./®™°"'’,\s+-]{0,52}$/i.test(t) && words.length <= 3) return true;
+  return false;
+}
+
 function recolectarBloqueDescripcion(lineas: string[], idxImportes: number): string | null {
-  // En Dux, la gran mayoría de ítems tiene descripción en la línea inmediata anterior
-  // a los importes. Tomar un bloque completo hacia arriba puede fusionar ítems vecinos.
-  // Si esa línea es solo código numérico, subir una línea más (descripción real).
-  for (let j = idxImportes - 1; j >= 0; j--) {
-    const L = lineas[j]!;
-    if (!L) continue;
-    if (esLineaSoloImportesDux(L)) return null;
-    const trimmed = L.trim();
-    // Antes que encabezado: códigos cortos («3568», «F045») no deben anular el ítem.
-    if (lineaPareceSoloCodigoInterno(trimmed) && j >= 1) {
-      for (let k = j - 1; k >= 0; k--) {
-        const prev = lineas[k]!;
-        if (!prev) continue;
-        if (lineaPareceEncabezadoOlegal(prev)) break;
-        if (esLineaSoloImportesDux(prev)) break;
-        return `${prev.trim()} ${trimmed}`;
-      }
+  let idx = idxImportes - 1;
+  while (idx >= 0) {
+    const raw = lineas[idx]!;
+    if (!raw.trim()) {
+      idx--;
+      continue;
     }
-    if (lineaPareceEncabezadoOlegal(L)) return null;
-    return trimmed;
+    if (esLineaSoloImportesDux(raw)) return null;
+    const tr = raw.trim();
+    // «F045» / «3568» tienen < 5 caracteres pero no son encabezados
+    if (lineaPareceEncabezadoOlegal(raw) && !lineaPareceSoloCodigoInterno(tr)) return null;
+    break;
   }
-  return null;
+  if (idx < 0) return null;
+
+  let trimmed = lineas[idx]!.trim();
+  if (lineaPareceSoloCodigoInterno(trimmed)) {
+    for (let k = idx - 1; k >= 0; k--) {
+      const prev = lineas[k]!;
+      if (!prev.trim()) continue;
+      if (lineaPareceEncabezadoOlegal(prev)) break;
+      if (esLineaSoloImportesDux(prev)) break;
+      trimmed = `${prev.trim()} ${trimmed}`;
+      idx = k;
+      break;
+    }
+  }
+
+  const parts: string[] = [trimmed];
+  let j = idx - 1;
+
+  while (j >= 0) {
+    const rawA = lineas[j]!;
+    const above = rawA.trim();
+    if (!above) {
+      j--;
+      continue;
+    }
+    if (esLineaSoloImportesDux(rawA)) break;
+    // Encabezados largos cortan; líneas muy cortas no (p. ej. «ET-») para no cortar envoltorio
+    if (lineaPareceEncabezadoOlegal(rawA) && above.length >= 8) break;
+
+    const closest = parts[parts.length - 1]!;
+    if (!lineaPareceFragmentoContinuacionInferior(closest)) break;
+
+    parts.unshift(above);
+    j--;
+  }
+
+  return parts.join(" ");
 }
 
 /** Reservado por compatibilidad con la API de extracción (sin inferencia de SKU). */

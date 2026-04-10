@@ -139,6 +139,45 @@ MOSQUETON 5 X 50 MM BLN-MOS02
     expect(tornillo!.descripcion).toContain("1/2");
   });
 
+  it("Dux: descripción en dos líneas (cola corta bajo la línea de importes)", () => {
+    const texto = `
+Descripción
+PINTURA AEROSOL DOBLE A X 350ML COLORES VARIOS DAA0250
+1,006.600,000,006.600,00
+ROLLO CINTA EMBALAR INCOLORA 48MM X 50MT TOP VALUE EMTOP EMPN1H05 ET-
+EMPN1H05
+1,001.650,000,001.650,00
+`.trim();
+    const items = extraerItemsDelTextoComprobante(texto);
+    const rollo = items.find((it) => it.descripcion.includes("ROLLO CINTA"));
+    expect(rollo).toBeDefined();
+    expect(rollo!.descripcion).toContain("EMPN1H05");
+    expect(rollo!.descripcion).toContain("ET-");
+    expect(rollo!.cantidad).toBe(1);
+    expect(rollo!.precioUnitario).toBe(1650);
+    const pintura = items.find((it) => it.descripcion.includes("PINTURA AEROSOL"));
+    expect(pintura).toBeDefined();
+    expect(pintura!.precioUnitario).toBe(6600);
+  });
+
+  it("Dux: descripción multilínea con caracteres especiales (/// ® \" )", () => {
+    const texto = `
+Descripción
+SUSTITUIR POR 7455 [BLISTER 5 UNID] /// ANTES BOQUILLA MAGNETICA WEMBLEY® 7/16" X
+65MM 5919
+1,002.350,000,002.350,00
+ARANDELAS CHAPISTAS GALV. 5/16 X KG. 20
+1,005.000,000,005.000,00
+`.trim();
+    const items = extraerItemsDelTextoComprobante(texto);
+    const boq = items.find((it) => it.descripcion.includes("BOQUILLA"));
+    expect(boq).toBeDefined();
+    expect(boq!.descripcion).toContain("65MM");
+    expect(boq!.descripcion).toContain("///");
+    expect(boq!.cantidad).toBe(1);
+    expect(boq!.precioUnitario).toBe(2350);
+  });
+
   it("Dux: ítem cuya descripción es solo código numérico (10100)", () => {
     const texto = `
 COMPROBANTE
