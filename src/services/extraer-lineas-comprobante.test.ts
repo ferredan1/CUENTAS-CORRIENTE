@@ -120,6 +120,42 @@ MISMO PRODUCTO PRUEBA 999001
     expect(mismo[1]!.cantidad).toBe(1);
   });
 
+  it("Dux: cantidad con miles (1.000,00) + descripción con / y comillas (Ferretería Dany)", () => {
+    const texto = `
+COMPROBANTE
+Descripción
+CADENA PAT.GALVANIZADA 30(16X12MM)X KG 5231
+1,2014.600,000,0017.520,00
+TORNILLO AUTOPERFORANTE FLANGEADA AGUJA [01] 08 X 1/2" TFA08013
+1.000,0020,000,0020.000,00
+MOSQUETON 5 X 50 MM BLN-MOS02
+60,00500,000,0030.000,00
+`.trim();
+    const items = extraerItemsDelTextoComprobante(texto);
+    const tornillo = items.find((it) => it.descripcion.includes("TORNILLO"));
+    expect(tornillo).toBeDefined();
+    expect(tornillo!.cantidad).toBe(1000);
+    expect(tornillo!.precioUnitario).toBe(20);
+    expect(tornillo!.descripcion).toContain("1/2");
+  });
+
+  it("Dux: ítem cuya descripción es solo código numérico (10100)", () => {
+    const texto = `
+COMPROBANTE
+Descripción
+10100
+1,003.800,000,003.800,00
+ARANDELA PLANA GALVA. 3/8 122G000000F0000
+1,001.400,000,001.400,00
+`.trim();
+    const items = extraerItemsDelTextoComprobante(texto);
+    const solo = items.find((it) => it.descripcion.trim() === "10100");
+    expect(solo).toBeDefined();
+    expect(solo!.cantidad).toBe(1);
+    expect(solo!.precioUnitario).toBe(3800);
+    expect(items.some((it) => it.descripcion.includes("ARANDELA"))).toBe(true);
+  });
+
   it("Dux: no confundir DESCARGA… con encabezado «Desc» (Ferretería Dany)", () => {
     const texto = `
 COMPROBANTE

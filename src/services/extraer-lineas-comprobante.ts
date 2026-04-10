@@ -32,20 +32,32 @@ export function parseNumeroArg(s: string): number {
   return Number.parseFloat(t);
 }
 
+/** Cantidad: «1,20» o miles «1.000,00» (muy común en Dux cuando la cantidad es ≥ 1.000). */
+const RE_DUX_CANT =
+  "(?:\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d+,\\d{2})";
+
 /**
  * Cant, P.U., % desc, subtotal pegados.
  * Cada monto AR: miles con punto o entero simple (incluye ceros a la izquierda p. ej. 00125,00).
  */
-const RE_DUX_LINEA_IMPORTES =
-  /^(\d+,\d{2})(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})$/;
+const RE_DUX_LINEA_IMPORTES = new RegExp(
+  `^(${RE_DUX_CANT})(\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d+,\\d{2})(\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d+,\\d{2})(\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d+,\\d{2})$`,
+);
 
 /** Cant., P.U., % desc, subtotal al final de la misma línea que la descripción (muchos PDF Dux). */
-const RE_DUX_COLA_CON_ESPACIOS =
-  /(\d+,\d{2})\s+(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})\s+(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})\s+(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})\s*$/;
+const RE_DUX_COLA_CON_ESPACIOS = new RegExp(
+  `(${RE_DUX_CANT})\\s+(\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d+,\\d{2})\\s+(\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d+,\\d{2})\\s+(\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d+,\\d{2})\\s*$`,
+);
+
+/** Descripción que es solo código numérico de producto (p. ej. «10100»), no un monto. */
+function esDescripcionSoloCodigoNumerico(s: string): boolean {
+  const t = s.trim();
+  return /^\d{3,12}$/.test(t);
+}
 
 /** Despeja montos AR pegados: primero miles con punto, si no «dígitos,dec». */
 function parsearImportesPelando(line: string): { cant: string; amounts: string[] } | null {
-  const cm = line.match(/^(\d+,\d{2})/);
+  const cm = line.match(new RegExp(`^(${RE_DUX_CANT})`));
   if (!cm) return null;
   let r = line.slice(cm[0].length);
   const amounts: string[] = [];
@@ -166,7 +178,7 @@ function parseItemDuxLineaUnica(
   if (mEsp && mEsp.index !== undefined && mEsp.index >= 1) {
     const descRaw = line.slice(0, mEsp.index).trim();
     if (!descRaw || lineaPareceEncabezadoOlegal(descRaw)) return null;
-    if (/^[\d$.\s,]+$/.test(descRaw)) return null;
+    if (/^[\d$.\s,]+$/.test(descRaw) && !esDescripcionSoloCodigoNumerico(descRaw)) return null;
     return construirItemDuxDesdeMatchImportes(
       descRaw,
       mEsp[1]!,
@@ -211,7 +223,7 @@ export function extraerItemsFormatoDux(
         !descRaw ||
         lineaPareceEncabezadoOlegal(descRaw) ||
         RE_DUX_LINEA_IMPORTES.test(descRaw) ||
-        /^[\d$.\s,]+$/.test(descRaw)
+        (/^[\d$.\s,]+$/.test(descRaw) && !esDescripcionSoloCodigoNumerico(descRaw))
       ) {
         continue;
       }
@@ -235,7 +247,13 @@ export function extraerItemsFormatoDux(
     const pelado = parsearImportesPelando(numLine);
     if (pelado && pelado.amounts.length === 5) {
       const descRaw = recolectarBloqueDescripcion(lineas, i);
-      if (!descRaw || lineaPareceEncabezadoOlegal(descRaw)) continue;
+      if (
+      !descRaw ||
+      lineaPareceEncabezadoOlegal(descRaw) ||
+      (/^[\d$.\s,]+$/.test(descRaw) && !esDescripcionSoloCodigoNumerico(descRaw))
+    ) {
+      continue;
+    }
       const [pu, pct, subNeto, , subIva] = pelado.amounts;
       const item = construirItemDuxDesdeMatchImportes(
         descRaw,
