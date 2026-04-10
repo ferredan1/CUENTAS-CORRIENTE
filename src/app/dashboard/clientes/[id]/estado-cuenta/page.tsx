@@ -40,6 +40,8 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
 
   const mostrarColObra = obras.length > 0 && !obraId && !sinObra;
 
+  const totalResumenObras = resumenSaldosPorObra.reduce((sum, r) => sum + r.saldo, 0);
+
   const fmtCant = (m: (typeof movimientosConSaldo)[number]) => {
     const n = Number(m.cantidad);
     if (!Number.isFinite(n)) return "—";
@@ -108,6 +110,12 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
                 </div>
               </div>
             ))}
+            <div className="border-t-2 border-white/35 bg-blue-900/25 px-4 py-2.5 text-sm font-bold uppercase tracking-wide">
+              Total
+            </div>
+            <div className="border-t-2 border-l border-white/35 bg-blue-900/25 px-4 py-2.5 text-right font-mono text-sm font-bold tabular-nums">
+              {formatMoneda(totalResumenObras)}
+            </div>
           </div>
         </section>
       ) : null}
@@ -218,4 +226,3 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
     </div>
   );
 }
-

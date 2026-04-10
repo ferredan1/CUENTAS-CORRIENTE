@@ -201,12 +201,35 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
         });
         yDash += rowH;
       }
+      const totalResumenObras = data.resumenSaldosPorObra.reduce((s, r) => s + r.saldo, 0);
+      const rowHTotal = 26;
+      doc.moveTo(pad, yDash)
+        .lineTo(pad + fullW, yDash)
+        .strokeColor("#ffffff")
+        .lineWidth(1)
+        .opacity(0.45)
+        .stroke()
+        .opacity(1);
+      doc.rect(pad, yDash, fullW, rowHTotal).fill("#1e40af");
+      doc.moveTo(pad + fullW * 0.62, yDash)
+        .lineTo(pad + fullW * 0.62, yDash + rowHTotal)
+        .opacity(0.35)
+        .strokeColor("#ffffff")
+        .lineWidth(0.5)
+        .stroke()
+        .opacity(1);
+      doc.fillColor("#ffffff")
+        .font("Helvetica-Bold")
+        .fontSize(10)
+        .text("TOTAL", pad + 10, yDash + 8, { width: fullW * 0.58 });
+      doc.text(formatMoneda(totalResumenObras), pad + fullW * 0.64, yDash + 8, {
+        width: fullW * 0.34 - 10,
+        align: "right",
+      });
       doc.restore();
     }
 
-      doc.end();
+    doc.end();
     })().catch(reject);
   });
 }
-
-
