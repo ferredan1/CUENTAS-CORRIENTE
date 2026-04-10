@@ -91,6 +91,13 @@ function lineaPareceSoloCodigoInterno(line: string): boolean {
   return /^[A-Z]{1,3}\d{2,6}[A-Z0-9]{0,3}$/i.test(t);
 }
 
+/** Encabezado / ruido, salvo códigos de ítem («460», «F045») que son descripción válida. */
+function lineaPareceEncabezadoOlegalExcluyendoCodigoArticulo(line: string): boolean {
+  const t = line.trim();
+  if (lineaPareceSoloCodigoInterno(t)) return false;
+  return lineaPareceEncabezadoOlegal(line);
+}
+
 /**
  * Línea inmediatamente sobre los importes que parece cola de descripción partida
  * (p. ej. «EMPN1H05», «65MM 5919»), no un título de ítem nuevo.
@@ -219,7 +226,7 @@ function parseItemDuxLineaUnica(
   const mEsp = line.match(RE_DUX_COLA_CON_ESPACIOS);
   if (mEsp && mEsp.index !== undefined && mEsp.index >= 1) {
     const descRaw = line.slice(0, mEsp.index).trim();
-    if (!descRaw || lineaPareceEncabezadoOlegal(descRaw)) return null;
+    if (!descRaw || lineaPareceEncabezadoOlegalExcluyendoCodigoArticulo(descRaw)) return null;
     if (/^[\d$.\s,]+$/.test(descRaw) && !esDescripcionSoloCodigoNumerico(descRaw)) return null;
     return construirItemDuxDesdeMatchImportes(
       descRaw,
@@ -263,7 +270,7 @@ export function extraerItemsFormatoDux(
       const descRaw = recolectarBloqueDescripcion(lineas, i);
       if (
         !descRaw ||
-        lineaPareceEncabezadoOlegal(descRaw) ||
+        lineaPareceEncabezadoOlegalExcluyendoCodigoArticulo(descRaw) ||
         RE_DUX_LINEA_IMPORTES.test(descRaw) ||
         (/^[\d$.\s,]+$/.test(descRaw) && !esDescripcionSoloCodigoNumerico(descRaw))
       ) {
@@ -290,12 +297,12 @@ export function extraerItemsFormatoDux(
     if (pelado && pelado.amounts.length === 5) {
       const descRaw = recolectarBloqueDescripcion(lineas, i);
       if (
-      !descRaw ||
-      lineaPareceEncabezadoOlegal(descRaw) ||
-      (/^[\d$.\s,]+$/.test(descRaw) && !esDescripcionSoloCodigoNumerico(descRaw))
-    ) {
-      continue;
-    }
+        !descRaw ||
+        lineaPareceEncabezadoOlegalExcluyendoCodigoArticulo(descRaw) ||
+        (/^[\d$.\s,]+$/.test(descRaw) && !esDescripcionSoloCodigoNumerico(descRaw))
+      ) {
+        continue;
+      }
       const [pu, pct, subNeto, , subIva] = pelado.amounts;
       const item = construirItemDuxDesdeMatchImportes(
         descRaw,

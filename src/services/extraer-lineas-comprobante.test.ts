@@ -178,6 +178,28 @@ ARANDELAS CHAPISTAS GALV. 5/16 X KG. 20
     expect(boq!.precioUnitario).toBe(2350);
   });
 
+  it("Dux: descripción solo 3 dígitos (460 / 422) como en PDF multi-comprobante", () => {
+    const texto = `
+Nº 00007-00004912
+FECHA: 06/04/2026
+Descripción
+Sub Total
+460
+1,008.750,000,008.750,00
+422
+4,007.600,000,0030.400,00
+`.trim();
+    const items = extraerItemsDelTextoComprobante(texto);
+    const c460 = items.find((it) => it.descripcion === "460");
+    const c422 = items.find((it) => it.descripcion === "422");
+    expect(c460).toBeDefined();
+    expect(c460!.cantidad).toBe(1);
+    expect(c460!.precioUnitario).toBe(8750);
+    expect(c422).toBeDefined();
+    expect(c422!.cantidad).toBe(4);
+    expect(c422!.precioUnitario).toBe(7600);
+  });
+
   it("Dux: ítem cuya descripción es solo código numérico (10100)", () => {
     const texto = `
 COMPROBANTE
@@ -211,6 +233,21 @@ DESCARGA APOYO TIPO ROCA NACIONAL 332062
     expect(descarga).toBeDefined();
     expect(descarga!.precioUnitario).toBe(15600);
     expect(items.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("PDF real Comprobante Dany multi-página: ítems 460 y 422", async () => {
+    const path = "C:/Users/ferre/Downloads/Comprobante.7159526418649688829.pdf";
+    let buf: Buffer;
+    try {
+      buf = readFileSync(path);
+    } catch {
+      return;
+    }
+    const data = await pdfParse(buf);
+    const texto = normalizarTextoExtraidoPdf(typeof data.text === "string" ? data.text : "");
+    const items = extraerItemsDelTextoComprobante(texto);
+    expect(items.some((it) => it.descripcion === "460")).toBe(true);
+    expect(items.some((it) => it.descripcion === "422")).toBe(true);
   });
 
   it("PDF real Membranex (Downloads): al menos un ítem", async () => {
