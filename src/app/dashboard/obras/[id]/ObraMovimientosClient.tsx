@@ -26,6 +26,8 @@ type MovRow = {
   total: number;
   saldoPendiente?: number;
   archivoId: string | null;
+  obraId: string | null;
+  obraNombre: string | null;
 };
 
 function isoADia(s: string | null | undefined): string {
@@ -164,6 +166,7 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
     const [marcarPagoFechaRecepcion, setMarcarPagoFechaRecepcion] = useState("");
     const [marcarPagoLoading, setMarcarPagoLoading] = useState(false);
     const [modalPagoParcialOpen, setModalPagoParcialOpen] = useState(false);
+    const [busquedaProducto, setBusquedaProducto] = useState("");
 
     const mobileExtraColsClass = showExtraMobileCols ? "" : "hidden md:table-cell";
 
@@ -218,7 +221,18 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
         }));
     }, [rows]);
 
-    const segments = useMemo(() => buildSegments(rows), [rows]);
+    const rowsVisibles = useMemo(() => {
+      const q = busquedaProducto.trim().toLowerCase();
+      if (!q || !todoCliente) return rows;
+      return rows.filter((r) => {
+        const desc = r.descripcion.toLowerCase();
+        const cod = (r.codigoProducto ?? "").toLowerCase();
+        const comp = (r.comprobante ?? "").toLowerCase();
+        return desc.includes(q) || cod.includes(q) || comp.includes(q);
+      });
+    }, [rows, busquedaProducto, todoCliente]);
+
+    const segments = useMemo(() => buildSegments(rowsVisibles), [rowsVisibles]);
 
     const load = useCallback(async () => {
       setLoading(true);
@@ -253,6 +267,8 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
               (r as { saldoPendiente?: number }).saldoPendiente ?? r.total ?? 0,
             ),
             archivoId: r.archivoId ?? null,
+            obraId: (r as { obra?: { id: string; nombre: string } | null }).obra?.id ?? null,
+            obraNombre: (r as { obra?: { id: string; nombre: string } | null }).obra?.nombre ?? null,
           })),
         );
       } catch (e) {
@@ -304,6 +320,7 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
         type PatchRes = MovRow & { error?: string };
         const data = (await res.json()) as PatchRes;
         if (!res.ok) throw new Error(data.error ?? "Error");
+        const obPatch = (data as { obra?: { id: string; nombre: string } | null }).obra;
         const actualizado: MovRow = {
           id: data.id,
           fecha: String(data.fecha),
@@ -328,8 +345,19 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
             (data as { saldoPendiente?: number }).saldoPendiente ?? data.total ?? 0,
           ),
           archivoId: data.archivoId ?? null,
+          obraId: obPatch?.id ?? null,
+          obraNombre: obPatch?.nombre ?? null,
         };
-        setRows((prev) => prev.map((r) => (r.id === id ? actualizado : r)));
+        setRows((prev) =>
+          prev.map((r) => {
+            if (r.id !== id) return r;
+            return {
+              ...actualizado,
+              obraId: obPatch?.id ?? r.obraId,
+              obraNombre: obPatch?.nombre ?? r.obraNombre,
+            };
+          }),
+        );
         setSavedId(id);
         window.setTimeout(() => setSavedId((cur) => (cur === id ? null : cur)), 1400);
       } catch (e) {
@@ -341,7 +369,8 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
       }
     }
 
-    const colCount = (showChequeCols ? 12 : 8) + (showNotasCols ? 1 : 0);
+    const colCount =
+      (showChequeCols ? 12 : 8) + (showNotasCols ? 1 : 0) + (todoCliente ? 1 : 0);
 
     async function confirmMarcarPagoDesdeGrilla() {
       if (!marcarPagoRow) return;
@@ -435,6 +464,17 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
               }}
             />
           </td>
+          {todoCliente ? (
+            <td className="border-r border-slate-100 px-2 py-1.5 align-top text-xs text-slate-700">
+              {r.obraId ? (
+                <Link href={`/dashboard/obras/${r.obraId}`} className="link-app font-medium">
+                  {r.obraNombre ?? "Obra"}
+                </Link>
+              ) : (
+                <span className="text-slate-400">Sin obra</span>
+              )}
+            </td>
+          ) : null}
           {showChequeCols && (
             <>
               <td className={`border-r border-slate-100 p-0 ${mobileExtraColsClass}`}>
@@ -751,6 +791,19 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
             <button type="button" onClick={() => void load()} className="btn-secondary">
               Aplicar
             </button>
+            {todoCliente ? (
+              <label className="min-w-[min(100%,14rem)] flex-1 sm:max-w-md">
+                <span className="label-field">Buscar en producto / código / comprobante</span>
+                <input
+                  type="search"
+                  value={busquedaProducto}
+                  onChange={(e) => setBusquedaProducto(e.target.value)}
+                  placeholder="Ej. tornillo, 332127…"
+                  className="input-app w-full"
+                  autoComplete="off"
+                />
+              </label>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div
@@ -783,6 +836,11 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
                 <span className="ml-2 text-xs text-slate-500">
                   (Total bruto:{" "}
                   <span className="font-mono tabular-nums">{formatMoneda(saldoLive)}</span>)
+                </span>
+              ) : null}
+              {todoCliente && busquedaProducto.trim() ? (
+                <span className="ml-2 block text-xs text-slate-500 sm:inline">
+                  Mostrando {rowsVisibles.length} de {rows.length} fila(s)
                 </span>
               ) : null}
             </div>
@@ -947,6 +1005,11 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
                   <th className="border-b border-slate-200 bg-slate-50 p-2 text-left text-[0.65rem] font-semibold uppercase tracking-wide text-slate-600 border-r border-slate-200 lg:w-40 xl:w-44">
                     Comprobante
                   </th>
+                  {todoCliente ? (
+                    <th className="border-b border-slate-200 bg-slate-50 p-2 text-left text-[0.65rem] font-semibold uppercase tracking-wide text-slate-600 border-r border-slate-200 lg:w-32 xl:w-36">
+                      Obra
+                    </th>
+                  ) : null}
                   {showChequeCols && (
                     <>
                       <th
@@ -1025,6 +1088,13 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
                   <tr>
                     <td colSpan={colCount} className="py-12 text-center text-slate-500">
                       Sin movimientos en este rango.
+                    </td>
+                  </tr>
+                )}
+                {rows.length > 0 && rowsVisibles.length === 0 && (
+                  <tr>
+                    <td colSpan={colCount} className="py-12 text-center text-slate-500">
+                      Ninguna fila coincide con la búsqueda.
                     </td>
                   </tr>
                 )}

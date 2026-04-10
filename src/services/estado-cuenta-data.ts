@@ -1,6 +1,7 @@
 import { saldoDesdeTotalesPorTipo } from "@/domain/saldos";
 import { parseQueryDayEnd, parseQueryDayStart } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { listarMovimientos } from "@/services/movimientos";
 
 export type MovimientoEstadoCuentaRow = Awaited<ReturnType<typeof listarMovimientos>>[number] & { saldo: number };
@@ -25,6 +26,8 @@ export type EstadoCuentaCargado = {
   totalVentasPeriodo: number;
   totalPagosPeriodo: number;
   etiquetaFiltroObra: string;
+  /** Saldo acumulado por obra hasta «hasta» (si no hay hasta, todo el historial). Solo si el alcance es «todas las obras». */
+  resumenSaldosPorObra: { orden: number; obraId: string | null; nombre: string; saldo: number }[];
 };
 
 /**
@@ -103,6 +106,47 @@ export async function cargarDatosEstadoCuenta(
     etiquetaFiltroObra = "Todas las obras";
   }
 
+  let resumenSaldosPorObra: EstadoCuentaCargado["resumenSaldosPorObra"] = [];
+  if (!sinObra && !obraId && obras.length > 0) {
+    const whereResumen: Prisma.MovimientoWhereInput = { clienteId };
+    if (hasta != null) {
+      whereResumen.fecha = { lte: hasta };
+    }
+    const grupos = await prisma.movimiento.groupBy({
+      by: ["obraId", "tipo"],
+      where: whereResumen,
+      _sum: { total: true },
+    });
+    const acum = new Map<string | null, Record<string, number>>();
+    for (const g of grupos) {
+      const oid = g.obraId;
+      const t = g.tipo;
+      const sum = Number(g._sum.total ?? 0);
+      const prev = acum.get(oid) ?? {};
+      prev[t] = (prev[t] ?? 0) + sum;
+      acum.set(oid, prev);
+    }
+    let orden = 0;
+    for (const o of obras) {
+      orden += 1;
+      resumenSaldosPorObra.push({
+        orden,
+        obraId: o.id,
+        nombre: o.nombre,
+        saldo: saldoDesdeTotalesPorTipo(acum.get(o.id) ?? {}),
+      });
+    }
+    if (acum.has(null)) {
+      orden += 1;
+      resumenSaldosPorObra.push({
+        orden,
+        obraId: null,
+        nombre: "Sin obra",
+        saldo: saldoDesdeTotalesPorTipo(acum.get(null) ?? {}),
+      });
+    }
+  }
+
   return {
     cliente,
     obras,
@@ -115,5 +159,6 @@ export async function cargarDatosEstadoCuenta(
     totalVentasPeriodo,
     totalPagosPeriodo,
     etiquetaFiltroObra,
+    resumenSaldosPorObra,
   };
 }

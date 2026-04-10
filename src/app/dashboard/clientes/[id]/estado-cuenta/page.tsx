@@ -35,7 +35,10 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
     movimientosConSaldo,
     totalVentasPeriodo,
     totalPagosPeriodo,
+    resumenSaldosPorObra,
   } = data;
+
+  const mostrarColObra = obras.length > 0 && !obraId && !sinObra;
 
   const fmtCant = (m: (typeof movimientosConSaldo)[number]) => {
     const n = Number(m.cantidad);
@@ -50,6 +53,7 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
         @media print {
           .page-shell { padding: 0 !important; }
           a[href]:after { content: ""; }
+          .estado-cuenta-dashboard-obras a { color: inherit !important; text-decoration: underline; }
         }
       `}</style>
 
@@ -71,7 +75,42 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
         </p>
       </header>
 
-      <EstadoCuentaControls obras={obras} />
+      <EstadoCuentaControls obras={obras} clienteId={cliente.id} />
+
+      {resumenSaldosPorObra.length > 0 ? (
+        <section
+          className="estado-cuenta-dashboard-obras overflow-hidden rounded-xl border border-blue-700/30 bg-[#2563eb] text-white shadow-md print:break-inside-avoid print:shadow-none"
+          aria-label="Resumen de saldos por obra"
+        >
+          <h2 className="border-b border-white/20 px-4 py-3 text-center text-sm font-bold uppercase tracking-wide text-white">
+            Estado de cuentas
+          </h2>
+          <div className="grid grid-cols-[1fr_auto] text-sm">
+            {resumenSaldosPorObra.map((row) => (
+              <div key={row.obraId ?? `sin-${row.orden}`} className="contents">
+                <div className="border-b border-white/15 px-4 py-2.5">
+                  <span className="tabular-nums text-white/90">{row.orden}.</span>{" "}
+                  {row.obraId ? (
+                    <Link
+                      href={`/dashboard/obras/${row.obraId}`}
+                      className="font-semibold uppercase underline decoration-white/70 underline-offset-2 print:text-white"
+                    >
+                      {row.nombre}
+                    </Link>
+                  ) : (
+                    <span className="font-semibold uppercase underline decoration-white/70 underline-offset-2">
+                      {row.nombre}
+                    </span>
+                  )}
+                </div>
+                <div className="border-b border-l border-white/15 px-4 py-2.5 text-right font-mono text-sm font-semibold tabular-nums">
+                  {formatMoneda(row.saldo)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="card-compact space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -102,6 +141,7 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
               <tr>
                 <th className="w-28">Fecha</th>
                 <th className="w-44">Comprobante</th>
+                {mostrarColObra ? <th className="w-36">Obra</th> : null}
                 <th>Descripción</th>
                 <th className="w-20 text-right">Cant.</th>
                 <th className="w-28 text-right">Precio unitario</th>
@@ -113,6 +153,17 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
                 <tr key={m.id}>
                   <td className="whitespace-nowrap text-slate-600 dark:text-slate-300">{formatFechaCorta(m.fecha)}</td>
                   <td className="font-mono text-xs tabular-nums text-slate-700 dark:text-slate-200">{m.comprobante ?? "—"}</td>
+                  {mostrarColObra ? (
+                    <td className="text-slate-700 dark:text-slate-200">
+                      {m.obra?.id ? (
+                        <Link href={`/dashboard/obras/${m.obra.id}`} className="link-app text-sm font-medium">
+                          {m.obra.nombre}
+                        </Link>
+                      ) : (
+                        <span className="text-slate-500">Sin obra</span>
+                      )}
+                    </td>
+                  ) : null}
                   <td className="text-slate-800 dark:text-slate-100">
                     <span className="capitalize text-slate-500 dark:text-slate-400">[{m.tipo}]</span>{" "}
                     {m.descripcion}
@@ -135,7 +186,10 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
               ))}
               {movimientosConSaldo.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                  <td
+                    colSpan={mostrarColObra ? 7 : 6}
+                    className="py-12 text-center text-slate-500 dark:text-slate-400"
+                  >
                     Sin movimientos para este rango.
                   </td>
                 </tr>
@@ -145,7 +199,7 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
               <tfoot>
                 <tr className="border-t-2 border-slate-300 bg-slate-50/60 font-medium dark:border-slate-600 dark:bg-slate-900/50">
                   <td
-                    colSpan={4}
+                    colSpan={mostrarColObra ? 5 : 4}
                     className="py-3 pr-4 text-right text-xs uppercase tracking-wide text-slate-600 dark:text-slate-400"
                   >
                     Totales del período

@@ -32,7 +32,7 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
         on: (event: string, cb: (chunk: Buffer) => void) => void;
         page: { width: number; height: number };
         y: number;
-        addPage: () => void;
+        addPage: (opts?: { layout?: string; size?: string; margin?: number }) => void;
         moveDown: (n?: number) => void;
         fontSize: (n: number) => any;
         font: (name: string) => any;
@@ -45,6 +45,10 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
         stroke: () => any;
         heightOfString: (text: string, opts?: Record<string, unknown>) => number;
         end: () => void;
+        save: () => void;
+        restore: () => void;
+        opacity: (n: number) => void;
+        rect: (x: number, y: number, w: number, h: number) => any;
       };
 
     const doc = new PDFDocumentCtor({
@@ -161,6 +165,44 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
         ? data.movimientosConSaldo[data.movimientosConSaldo.length - 1]!.saldo
         : data.saldoAnterior;
     doc.text(`Saldo al cierre del listado: ${formatMoneda(saldoFinal)}`, left, doc.y);
+
+    if (data.resumenSaldosPorObra.length > 0 && incluirObra) {
+      doc.addPage({ layout: "portrait", size: "A4" });
+      const pad = 36;
+      const fullW = doc.page.width - 2 * pad;
+      let yDash = pad;
+      doc.save();
+      doc.rect(pad, yDash, fullW, 30).fill("#2563eb");
+      doc
+        .fillColor("#ffffff")
+        .fontSize(13)
+        .font("Helvetica-Bold")
+        .text("ESTADO DE CUENTAS", pad, yDash + 9, { width: fullW, align: "center" });
+      yDash += 30;
+      for (const row of data.resumenSaldosPorObra) {
+        const rowH = 24;
+        doc.rect(pad, yDash, fullW, rowH).fill("#2563eb");
+        doc.moveTo(pad + fullW * 0.62, yDash)
+          .lineTo(pad + fullW * 0.62, yDash + rowH)
+          .opacity(0.35)
+          .strokeColor("#ffffff")
+          .lineWidth(0.5)
+          .stroke()
+          .opacity(1);
+        doc.fillColor("#ffffff")
+          .font("Helvetica")
+          .fontSize(9)
+          .text(`${row.orden}. ${row.nombre.toUpperCase()}`, pad + 10, yDash + 7, {
+            width: fullW * 0.58,
+          });
+        doc.font("Helvetica-Bold").text(formatMoneda(row.saldo), pad + fullW * 0.64, yDash + 7, {
+          width: fullW * 0.34 - 10,
+          align: "right",
+        });
+        yDash += rowH;
+      }
+      doc.restore();
+    }
 
       doc.end();
     })().catch(reject);

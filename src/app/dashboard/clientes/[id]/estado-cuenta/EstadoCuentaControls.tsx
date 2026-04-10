@@ -13,8 +13,10 @@ const OBRA_SIN_OBRA = "__sin_obra__";
 
 export function EstadoCuentaControls({
   obras,
+  clienteId,
 }: {
   obras: ObraOpt[];
+  clienteId: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -44,6 +46,11 @@ export function EstadoCuentaControls({
     router.push(`${pathname}?${next.toString()}`);
     router.refresh();
   }
+
+  const pdfHref = useMemo(() => {
+    const q = sp.toString();
+    return `/api/clientes/${encodeURIComponent(clienteId)}/estado-cuenta/pdf${q ? `?${q}` : ""}`;
+  }, [clienteId, sp]);
 
   return (
     <div className="print:hidden rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
@@ -79,8 +86,16 @@ export function EstadoCuentaControls({
             className="btn-primary inline-flex min-h-10 flex-1 items-center justify-center sm:flex-none"
             onClick={() => window.print()}
           >
-            Imprimir / Guardar PDF
+            Imprimir
           </button>
+          <a
+            href={pdfHref}
+            className="btn-secondary inline-flex min-h-10 flex-1 items-center justify-center sm:flex-none"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Descargar PDF
+          </a>
         </div>
       </div>
     </div>
