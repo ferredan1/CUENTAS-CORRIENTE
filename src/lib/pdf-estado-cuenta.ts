@@ -208,3 +208,5 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
     })().catch(reject);
   });
 }
+
+
