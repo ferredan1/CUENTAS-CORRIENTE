@@ -6,6 +6,11 @@ import { esEstadoGestionCuenta } from "@/types/estado-gestion-cuenta";
 import { prisma } from "@/lib/prisma";
 import { tryRemoveStoredFile } from "@/services/archivos";
 import { auditLogEliminacion } from "@/services/audit";
+import {
+  cargarAnticiposEnPagos,
+  mapImputacionAnticipoPorPagoIds,
+  sumAnticipoPagosPorCliente,
+} from "@/services/cartera-pago-anticipo";
 import { saldoDesdeTotalesPorTipo, saldoEfectivoConCheques } from "@/domain/saldos";
 import { esTipoCliente } from "@/types/domain";
 
@@ -29,14 +34,18 @@ function estadoCobranzaDesdeSaldoYDias(saldo: number, diasDesdeUltimaVentaImpaga
   return "incobrable";
 }
 
-/** Cartera coherente con pagos parciales: ventas suman `saldoPendiente`, el resto suma `total` del libro. */
+/**
+ * Cartera coherente con pagos parciales: ventas suman `saldoPendiente`.
+ * Los `pago` solo restan la parte no imputada a ventas (anticipo), porque el cobro que cerró o
+ * bajó `saldoPendiente` no debe volver a restarse al agregarlo como `total` del pago.
+ */
 async function totalesMovimientoPorClienteParaSaldo(
   opts?: { clienteIdIn?: string[] },
 ): Promise<Map<string, Record<string, number>>> {
   const idPart =
     opts?.clienteIdIn && opts.clienteIdIn.length > 0 ? { clienteId: { in: opts.clienteIdIn } } : {};
 
-  const [ventaAgg, otroAgg] = await Promise.all([
+  const [ventaAgg, otroAgg, anticipoPorCliente] = await Promise.all([
     prisma.movimiento.groupBy({
       by: ["clienteId"],
       where: { tipo: "venta", ...idPart },
@@ -44,9 +53,12 @@ async function totalesMovimientoPorClienteParaSaldo(
     }),
     prisma.movimiento.groupBy({
       by: ["clienteId", "tipo"],
-      where: { tipo: { not: "venta" }, ...idPart },
+      where: { tipo: { notIn: ["venta", "pago"] }, ...idPart },
       _sum: { total: true },
     }),
+    sumAnticipoPagosPorCliente(
+      opts?.clienteIdIn && opts.clienteIdIn.length > 0 ? { clienteIdIn: opts.clienteIdIn } : undefined,
+    ),
   ]);
 
   const porCliente = new Map<string, Record<string, number>>();
@@ -60,6 +72,11 @@ async function totalesMovimientoPorClienteParaSaldo(
     const prev = porCliente.get(g.clienteId) ?? {};
     prev[g.tipo] = Number(g._sum.total ?? 0);
     porCliente.set(g.clienteId, prev);
+  }
+  for (const [clienteId, anticipo] of anticipoPorCliente) {
+    const prev = porCliente.get(clienteId) ?? {};
+    prev.pago = anticipo;
+    porCliente.set(clienteId, prev);
   }
   return porCliente;
 }
@@ -741,6 +758,7 @@ export async function obtenerCliente(clienteId: string) {
     cliente,
     ventaObraAgg,
     otroObraAgg,
+    anticipoPagosFilas,
     ultimoMovimiento,
     movimientosCount,
     pagosChequePendientes,
@@ -775,9 +793,10 @@ export async function obtenerCliente(clienteId: string) {
     }),
     prisma.movimiento.groupBy({
       by: ["obraId", "tipo"],
-      where: { clienteId, tipo: { not: "venta" } },
+      where: { clienteId, tipo: { notIn: ["venta", "pago"] } },
       _sum: { total: true },
     }),
+    cargarAnticiposEnPagos({ clienteId }),
     prisma.movimiento.findFirst({
       where: { clienteId },
       orderBy: [{ fecha: "desc" }, { createdAt: "desc" }],
@@ -851,6 +870,17 @@ export async function obtenerCliente(clienteId: string) {
       const prev = saldoPorObraId.get(g.obraId) ?? {};
       prev[g.tipo] = (prev[g.tipo] ?? 0) + sum;
       saldoPorObraId.set(g.obraId, prev);
+    }
+  }
+  for (const ap of anticipoPagosFilas) {
+    const sum = ap.anticipo;
+    saldoPorTipo.pago = (saldoPorTipo.pago ?? 0) + sum;
+    if (ap.obraId === null) {
+      saldoSinObraPorTipo.pago = (saldoSinObraPorTipo.pago ?? 0) + sum;
+    } else {
+      const prev = saldoPorObraId.get(ap.obraId) ?? {};
+      prev.pago = (prev.pago ?? 0) + sum;
+      saldoPorObraId.set(ap.obraId, prev);
     }
   }
 
@@ -938,6 +968,56 @@ export type CrearClienteInput = {
   email?: string | null;
   telefono?: string | null;
 };
+
+const HISTORIAL_PAGOS_LIMIT = 300;
+
+export type ClientePagoHistorialItem = {
+  id: string;
+  fecha: Date;
+  total: number;
+  medioPago: string | null;
+  comprobante: string | null;
+  descripcion: string;
+  obra: { id: string; nombre: string } | null;
+  imputadoAVentas: number;
+  anticipo: number;
+};
+
+/** Movimientos `pago` del cliente (más recientes primero), con imputación a ventas vs anticipo. */
+export async function listarHistorialPagosCliente(clienteId: string): Promise<ClientePagoHistorialItem[]> {
+  const rows = await prisma.movimiento.findMany({
+    where: { clienteId, tipo: "pago" },
+    orderBy: [{ fecha: "desc" }, { createdAt: "desc" }],
+    take: HISTORIAL_PAGOS_LIMIT,
+    select: {
+      id: true,
+      fecha: true,
+      total: true,
+      medioPago: true,
+      comprobante: true,
+      descripcion: true,
+      obra: { select: { id: true, nombre: true } },
+    },
+  });
+  if (rows.length === 0) return [];
+
+  const imputacion = await mapImputacionAnticipoPorPagoIds(rows.map((r) => r.id));
+
+  return rows.map((r) => {
+    const imp = imputacion.get(r.id);
+    return {
+      id: r.id,
+      fecha: r.fecha,
+      total: Number(r.total),
+      medioPago: r.medioPago as string | null,
+      comprobante: r.comprobante,
+      descripcion: r.descripcion,
+      obra: r.obra,
+      imputadoAVentas: imp?.imputado ?? 0,
+      anticipo: imp?.anticipo ?? 0,
+    };
+  });
+}
 
 export async function crearCliente(input: CrearClienteInput) {
   const nombre = input.nombre.trim();

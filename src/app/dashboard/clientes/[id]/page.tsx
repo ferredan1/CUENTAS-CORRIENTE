@@ -1,6 +1,6 @@
 import { toIsoUtc } from "@/lib/format";
 import { getServerUserId } from "@/lib/get-server-user-id";
-import { obtenerCliente } from "@/services/clientes";
+import { listarHistorialPagosCliente, obtenerCliente } from "@/services/clientes";
 import { notFound, redirect } from "next/navigation";
 import { ClienteFichaClient, type ClienteFichaDTO } from "./ClienteFichaClient";
 
@@ -11,7 +11,7 @@ export default async function ClienteDetallePage({ params }: Props) {
   if (!userId) redirect("/login");
 
   const { id } = await params;
-  const cliente = await obtenerCliente(id);
+  const [cliente, historialPagos] = await Promise.all([obtenerCliente(id), listarHistorialPagosCliente(id)]);
   if (!cliente) notFound();
 
   const dto: ClienteFichaDTO = {
@@ -67,6 +67,17 @@ export default async function ClienteDetallePage({ params }: Props) {
         }
       : null,
     promedioDiasPago: (cliente as { promedioDiasPago?: number | null }).promedioDiasPago ?? null,
+    historialPagos: historialPagos.map((p) => ({
+      id: p.id,
+      fecha: toIsoUtc(p.fecha),
+      total: p.total,
+      medioPago: p.medioPago,
+      comprobante: p.comprobante,
+      descripcion: p.descripcion,
+      obra: p.obra,
+      imputadoAVentas: p.imputadoAVentas,
+      anticipo: p.anticipo,
+    })),
   };
 
   return (

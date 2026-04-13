@@ -28,6 +28,23 @@ type ObraSaldoDTO = {
   estadoSaldo: "sin_facturar" | "cerrado_facturado" | "enviado_pendiente_pago";
 };
 
+type PagoHistorialDTO = {
+  id: string;
+  fecha: string;
+  total: number;
+  medioPago: string | null;
+  comprobante: string | null;
+  descripcion: string;
+  obra: { id: string; nombre: string } | null;
+  imputadoAVentas: number;
+  anticipo: number;
+};
+
+function etiquetaMedioPago(m: string | null | undefined): string {
+  if (!m?.trim()) return "—";
+  return m.replace(/_/g, " ");
+}
+
 export type ClienteFichaDTO = {
   id: string;
   nombre: string;
@@ -55,11 +72,13 @@ export type ClienteFichaDTO = {
   };
   ultimoPago: { fecha: string; total: number; medioPago: string | null } | null;
   promedioDiasPago: number | null;
+  historialPagos: PagoHistorialDTO[];
 };
 
 const TABS = [
   { id: "resumen" as const, label: "Resumen" },
   { id: "movimientos" as const, label: "Movimientos" },
+  { id: "pagos" as const, label: "Historial de pagos" },
   { id: "comprobantes" as const, label: "Comprobantes" },
   { id: "obras" as const, label: "Obras" },
   { id: "datos" as const, label: "Datos" },
@@ -94,6 +113,7 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
   const tabsWithCounts = useMemo(() => {
     const counts: Partial<Record<TabId, number>> = {
       movimientos: c.movimientosCount,
+      pagos: c.historialPagos.length,
       comprobantes: c.archivos.length,
       obras: c.obrasConSaldo.length,
     };
@@ -101,7 +121,7 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
       ...t,
       count: counts[t.id],
     }));
-  }, [c.archivos.length, c.movimientosCount, c.obrasConSaldo.length]);
+  }, [c.archivos.length, c.historialPagos.length, c.movimientosCount, c.obrasConSaldo.length]);
 
   useEffect(() => {
     const nextHash = `#${tab}`;
@@ -440,6 +460,71 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
             Todos los movimientos del cliente (todas las obras y sin obra). Podés registrar movimientos desde acá.
           </p>
           <ObraMovimientosClient todoCliente clienteId={c.id} saldoObra={c.saldo} />
+        </div>
+      )}
+
+      {tab === "pagos" && (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Cobros registrados (marcar comprobante pagado, cargar pago, etc.), del más reciente al más antiguo.{" "}
+            <span className="font-medium text-slate-700">A ventas</span> es lo imputado a facturas o comprobantes;{" "}
+            <span className="font-medium text-slate-700">Anticipo</span> es la parte del cobro que quedó como saldo a
+            favor del cliente dentro de ese mismo movimiento.
+          </p>
+          <div className="table-shell overflow-x-auto">
+            <table className="table-app min-w-[44rem]">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th className="text-right">Importe</th>
+                  <th>Medio</th>
+                  <th className="text-right">A ventas</th>
+                  <th className="text-right">Anticipo</th>
+                  <th>Comprobante</th>
+                  <th>Obra</th>
+                  <th>Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                {c.historialPagos.map((p) => (
+                  <tr key={p.id}>
+                    <td className="whitespace-nowrap text-slate-600">{formatFechaCorta(p.fecha)}</td>
+                    <td className="text-right font-mono text-sm font-semibold tabular-nums text-slate-900">
+                      {formatMoneda(p.total)}
+                    </td>
+                    <td className="text-slate-700">{etiquetaMedioPago(p.medioPago)}</td>
+                    <td className="text-right font-mono text-sm tabular-nums text-slate-700">
+                      {p.imputadoAVentas > 0 ? formatMoneda(p.imputadoAVentas) : "—"}
+                    </td>
+                    <td className="text-right font-mono text-sm tabular-nums text-emerald-800">
+                      {p.anticipo > 0 ? formatMoneda(p.anticipo) : "—"}
+                    </td>
+                    <td className="max-w-[8rem] truncate font-mono text-xs tabular-nums text-slate-700">
+                      {p.comprobante ?? "—"}
+                    </td>
+                    <td className="max-w-[7rem] truncate text-slate-600">{p.obra?.nombre ?? "—"}</td>
+                    <td className="max-w-[14rem] truncate text-sm text-slate-600" title={p.descripcion}>
+                      {p.descripcion}
+                    </td>
+                  </tr>
+                ))}
+                {c.historialPagos.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-slate-500">
+                      Todavía no hay pagos registrados para este cliente.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-slate-500">
+            Podés cargar un pago desde{" "}
+            <Link href={`/dashboard/carga?clienteId=${c.id}`} className="link-app">
+              Registrar movimiento
+            </Link>
+            .
+          </p>
         </div>
       )}
 
