@@ -321,11 +321,10 @@
   .segmented {
     @apply inline-flex max-w-full gap-1 rounded-lg bg-slate-100/90 p-1 ring-1 ring-slate-200/80;
     @apply flex-nowrap overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch];
-    @apply sm:flex-wrap sm:overflow-visible;
   }
 
   .segmented-btn {
-    @apply whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium text-slate-600 transition-colors sm:px-3;
+    @apply shrink-0 whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium text-slate-600 transition-colors sm:px-3;
     @apply hover:bg-white hover:text-slate-900 hover:shadow-sm;
   }
 

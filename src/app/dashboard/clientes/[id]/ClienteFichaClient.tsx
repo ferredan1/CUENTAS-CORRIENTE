@@ -211,7 +211,7 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
         </div>
       </header>
 
-      <div className="segmented flex w-full min-w-0 max-w-3xl touch-pan-x">
+      <div className="segmented flex w-full min-w-0 max-w-full touch-pan-x">
         {tabsWithCounts.map((t) => (
           <button
             key={t.id}
