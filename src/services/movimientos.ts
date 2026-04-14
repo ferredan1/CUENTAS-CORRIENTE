@@ -523,6 +523,69 @@ export async function actualizarMovimiento(
   return updated;
 }
 
+/**
+ * Devolución de mercadería sobre una línea de venta: crea un movimiento `devolucion` y deja la venta
+ * con saldo pendiente en cero (no usa `liquidadoAt`, para no contarla como «pagada» en comprobantes).
+ */
+export async function registrarDevolucionSobreVenta(ventaMovimientoId: string) {
+  return prisma.$transaction(async (tx) => {
+    const v = await tx.movimiento.findFirst({
+      where: { id: ventaMovimientoId, tipo: "venta" },
+    });
+    if (!v) throw new Error("Movimiento no encontrado o no es una venta.");
+
+    const monto = Number(v.saldoPendiente ?? v.total ?? 0);
+    if (!Number.isFinite(monto) || !(monto > 0)) {
+      throw new Error("La venta no tiene saldo pendiente para registrar una devolución.");
+    }
+
+    const baseDesc = v.descripcion?.trim() || "Venta";
+    const descripcion =
+      `Devolución — ${baseDesc}`.length > 2000
+        ? `Devolución — ${baseDesc.slice(0, 1980)}…`
+        : `Devolución — ${baseDesc}`;
+
+    const dev = await tx.movimiento.create({
+      data: {
+        clienteId: v.clienteId,
+        obraId: v.obraId,
+        archivoId: null,
+        tipo: "devolucion",
+        fecha: new Date(),
+        comprobante: v.comprobante?.trim() ?? null,
+        normalizedComprobante: v.normalizedComprobante,
+        codigoProducto: v.codigoProducto ?? null,
+        descripcion,
+        cantidad: 1,
+        precioUnitario: toDecimal2(monto),
+        total: toDecimal2(monto),
+        saldoPendiente: toDecimal2(0),
+        medioPago: null,
+        chequeNumero: null,
+        chequeBanco: null,
+        chequeVencimiento: null,
+        fechaRecepcion: null,
+      },
+    });
+
+    const notaMarca = `Devolución registrada (mov. ${dev.id}).`;
+    const notasNext =
+      v.notas && String(v.notas).trim().length > 0
+        ? `${String(v.notas).trim()}\n${notaMarca}`
+        : notaMarca;
+
+    await tx.movimiento.update({
+      where: { id: ventaMovimientoId },
+      data: {
+        saldoPendiente: toDecimal2(0),
+        notas: notasNext.length > 8000 ? notasNext.slice(0, 8000) : notasNext,
+      },
+    });
+
+    return dev;
+  });
+}
+
 export async function eliminarMovimiento(movimientoId: string) {
   const r = await prisma.movimiento.deleteMany({
     where: { id: movimientoId },

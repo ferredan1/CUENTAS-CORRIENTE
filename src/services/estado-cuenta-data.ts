@@ -24,7 +24,10 @@ export type EstadoCuentaCargado = {
   saldoAnterior: number;
   movimientosConSaldo: MovimientoEstadoCuentaRow[];
   totalVentasPeriodo: number;
+  /** Suma de movimientos `pago` + `devolucion` (para totales combinados). */
   totalPagosPeriodo: number;
+  totalPagosSoloPeriodo: number;
+  totalDevolucionesPeriodo: number;
   etiquetaFiltroObra: string;
   /** Saldo acumulado por obra hasta «hasta» (si no hay hasta, todo el historial). Solo si el alcance es «todas las obras». */
   resumenSaldosPorObra: { orden: number; obraId: string | null; nombre: string; saldo: number }[];
@@ -92,9 +95,13 @@ export async function cargarDatosEstadoCuenta(
   const totalVentasPeriodo = movimientos
     .filter((m) => m.tipo === "venta" || m.tipo === "ajuste")
     .reduce((s, m) => s + Number(m.total), 0);
-  const totalPagosPeriodo = movimientos
-    .filter((m) => m.tipo === "pago" || m.tipo === "devolucion")
+  const totalPagosSoloPeriodo = movimientos
+    .filter((m) => m.tipo === "pago")
     .reduce((s, m) => s + Number(m.total), 0);
+  const totalDevolucionesPeriodo = movimientos
+    .filter((m) => m.tipo === "devolucion")
+    .reduce((s, m) => s + Number(m.total), 0);
+  const totalPagosPeriodo = totalPagosSoloPeriodo + totalDevolucionesPeriodo;
 
   let etiquetaFiltroObra: string;
   if (sinObra) {
@@ -158,6 +165,8 @@ export async function cargarDatosEstadoCuenta(
     movimientosConSaldo,
     totalVentasPeriodo,
     totalPagosPeriodo,
+    totalPagosSoloPeriodo,
+    totalDevolucionesPeriodo,
     etiquetaFiltroObra,
     resumenSaldosPorObra,
   };

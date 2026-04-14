@@ -34,7 +34,8 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
     saldoAnterior,
     movimientosConSaldo,
     totalVentasPeriodo,
-    totalPagosPeriodo,
+    totalPagosSoloPeriodo,
+    totalDevolucionesPeriodo,
     resumenSaldosPorObra,
   } = data;
 
@@ -217,7 +218,8 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
                   <td className="py-3 text-right font-mono text-sm text-slate-500">—</td>
                   <td className="py-3 text-right font-mono text-sm">
                     <div className="text-slate-700">Ventas: {formatMoneda(totalVentasPeriodo)}</div>
-                    <div className="text-emerald-700">Pagos: −{formatMoneda(totalPagosPeriodo)}</div>
+                    <div className="text-emerald-700">Pagos: −{formatMoneda(totalPagosSoloPeriodo)}</div>
+                    <div className="text-amber-800">Devoluciones: −{formatMoneda(totalDevolucionesPeriodo)}</div>
                     <div
                       className={`font-semibold ${
                         saldoFinalDetalle > 0

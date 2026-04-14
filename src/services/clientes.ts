@@ -1019,6 +1019,41 @@ export async function listarHistorialPagosCliente(clienteId: string): Promise<Cl
   });
 }
 
+const LISTA_DEVOLUCIONES_LIMIT = 200;
+
+export type ClienteDevolucionItem = {
+  id: string;
+  fecha: Date;
+  total: number;
+  comprobante: string | null;
+  descripcion: string;
+  obra: { id: string; nombre: string } | null;
+};
+
+export async function listarDevolucionesCliente(clienteId: string): Promise<ClienteDevolucionItem[]> {
+  const rows = await prisma.movimiento.findMany({
+    where: { clienteId, tipo: "devolucion" },
+    orderBy: [{ fecha: "desc" }, { createdAt: "desc" }],
+    take: LISTA_DEVOLUCIONES_LIMIT,
+    select: {
+      id: true,
+      fecha: true,
+      total: true,
+      comprobante: true,
+      descripcion: true,
+      obra: { select: { id: true, nombre: true } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    fecha: r.fecha,
+    total: Number(r.total),
+    comprobante: r.comprobante,
+    descripcion: r.descripcion,
+    obra: r.obra,
+  }));
+}
+
 export async function crearCliente(input: CrearClienteInput) {
   const nombre = input.nombre.trim();
   if (!nombre) throw new Error("Nombre requerido");

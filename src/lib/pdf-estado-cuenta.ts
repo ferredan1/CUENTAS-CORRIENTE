@@ -158,7 +158,9 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
     doc.font("Helvetica").fontSize(9).moveDown(0.2);
     doc.text(`Ventas / cargos: ${formatMoneda(data.totalVentasPeriodo)}`, left, doc.y);
     doc.moveDown(0.15);
-    doc.text(`Pagos / devoluciones: −${formatMoneda(data.totalPagosPeriodo)}`, left, doc.y);
+    doc.text(`Pagos: −${formatMoneda(data.totalPagosSoloPeriodo)}`, left, doc.y);
+    doc.moveDown(0.15);
+    doc.text(`Devoluciones: −${formatMoneda(data.totalDevolucionesPeriodo)}`, left, doc.y);
     doc.moveDown(0.15);
     const saldoFinal =
       data.movimientosConSaldo.length > 0

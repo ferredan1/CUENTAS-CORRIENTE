@@ -40,6 +40,15 @@ type PagoHistorialDTO = {
   anticipo: number;
 };
 
+type DevolucionDTO = {
+  id: string;
+  fecha: string;
+  total: number;
+  comprobante: string | null;
+  descripcion: string;
+  obra: { id: string; nombre: string } | null;
+};
+
 function etiquetaMedioPago(m: string | null | undefined): string {
   if (!m?.trim()) return "—";
   return m.replace(/_/g, " ");
@@ -73,12 +82,14 @@ export type ClienteFichaDTO = {
   ultimoPago: { fecha: string; total: number; medioPago: string | null } | null;
   promedioDiasPago: number | null;
   historialPagos: PagoHistorialDTO[];
+  devoluciones: DevolucionDTO[];
 };
 
 const TABS = [
   { id: "resumen" as const, label: "Resumen" },
   { id: "movimientos" as const, label: "Movimientos" },
   { id: "pagos" as const, label: "Historial de pagos" },
+  { id: "devoluciones" as const, label: "Devoluciones" },
   { id: "comprobantes" as const, label: "Comprobantes" },
   { id: "obras" as const, label: "Obras" },
   { id: "datos" as const, label: "Datos" },
@@ -114,6 +125,7 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
     const counts: Partial<Record<TabId, number>> = {
       movimientos: c.movimientosCount,
       pagos: c.historialPagos.length,
+      devoluciones: c.devoluciones.length,
       comprobantes: c.archivos.length,
       obras: c.obrasConSaldo.length,
     };
@@ -121,7 +133,13 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
       ...t,
       count: counts[t.id],
     }));
-  }, [c.archivos.length, c.historialPagos.length, c.movimientosCount, c.obrasConSaldo.length]);
+  }, [
+    c.archivos.length,
+    c.devoluciones.length,
+    c.historialPagos.length,
+    c.movimientosCount,
+    c.obrasConSaldo.length,
+  ]);
 
   useEffect(() => {
     const nextHash = `#${tab}`;
@@ -525,6 +543,56 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
             </Link>
             .
           </p>
+        </div>
+      )}
+
+      {tab === "devoluciones" && (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Devoluciones de mercadería registradas desde la grilla de movimientos (botón en cada línea de venta con
+            saldo pendiente). También podés cargar una devolución manual desde{" "}
+            <Link href={`/dashboard/carga?clienteId=${c.id}&tipo=devolucion`} className="link-app">
+              Cargar devolución manual
+            </Link>
+            .
+          </p>
+          <div className="table-shell overflow-x-auto">
+            <table className="table-app min-w-[36rem]">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th className="text-right">Importe</th>
+                  <th>Comprobante</th>
+                  <th>Obra</th>
+                  <th>Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                {c.devoluciones.map((d) => (
+                  <tr key={d.id}>
+                    <td className="whitespace-nowrap text-slate-600">{formatFechaCorta(d.fecha)}</td>
+                    <td className="text-right font-mono text-sm font-semibold tabular-nums text-amber-900">
+                      −{formatMoneda(d.total)}
+                    </td>
+                    <td className="max-w-[8rem] truncate font-mono text-xs tabular-nums text-slate-700">
+                      {d.comprobante ?? "—"}
+                    </td>
+                    <td className="max-w-[7rem] truncate text-slate-600">{d.obra?.nombre ?? "—"}</td>
+                    <td className="max-w-[24rem] truncate text-sm text-slate-600" title={d.descripcion}>
+                      {d.descripcion}
+                    </td>
+                  </tr>
+                ))}
+                {c.devoluciones.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-slate-500">
+                      Sin devoluciones registradas.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

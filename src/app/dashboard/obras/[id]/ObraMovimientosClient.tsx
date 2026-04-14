@@ -1,6 +1,6 @@
 "use client";
 
-import { IconCheck, IconClock, IconTrash } from "@/components/UiIcons";
+import { IconCheck, IconClock, IconTrash, IconTruck } from "@/components/UiIcons";
 import { formatFechaCorta, formatMoneda } from "@/lib/format";
 import { acumularPorTipo, saldoDesdeTotalesPorTipo, totalesPendientesDesdeFilas } from "@/domain/saldos";
 import type { TipoMovimiento } from "@/types/domain";
@@ -154,6 +154,8 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
     const [showChequeCols, setShowChequeCols] = useState(false);
     const [showExtraMobileCols, setShowExtraMobileCols] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [devolverConfirmId, setDevolverConfirmId] = useState<string | null>(null);
+    const [devolverLoadingId, setDevolverLoadingId] = useState<string | null>(null);
     const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
     const [showNotasCols, setShowNotasCols] = useState(false);
     const [marcarPagoRow, setMarcarPagoRow] = useState<MovRow | null>(null);
@@ -431,13 +433,17 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
     }
 
     function renderRow(r: MovRow) {
+      const pendienteVenta = r.tipo === "venta" ? Number(r.saldoPendiente ?? r.total ?? 0) : 0;
+      const puedeMarcarDevolucion = r.tipo === "venta" && pendienteVenta > 0.0001;
       const rowErr = rowErrors[r.id] ?? null;
       const baseRow = "group border-b border-slate-100 transition-colors";
       const rowBg = rowErr
         ? "bg-rose-50/30"
         : r.tipo === "pago"
           ? "bg-emerald-50/40 dark:bg-emerald-950/25"
-          : "hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20";
+          : r.tipo === "devolucion"
+            ? "bg-amber-50/50 dark:bg-amber-950/20"
+            : "hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20";
       return (
         <tr key={rowKey(r)} className={`${baseRow} ${rowBg}`}>
           <td className="border-r border-slate-100 p-0">
@@ -730,16 +736,73 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
                     No
                   </button>
                 </div>
-              ) : canDeleteMov ? (
-                <button
-                  type="button"
-                  className="rounded-md p-1.5 text-slate-400 opacity-0 transition hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100"
-                  title="Eliminar fila"
-                  onClick={() => setDeleteConfirmId(r.id)}
-                >
-                  <IconTrash className="size-4" />
-                </button>
-              ) : null}
+              ) : puedeMarcarDevolucion && devolverConfirmId === r.id ? (
+                <div className="flex max-w-[14rem] flex-wrap items-center gap-1 rounded-md bg-amber-50 px-1.5 py-1 ring-1 ring-amber-200/80">
+                  <span className="text-[0.65rem] font-medium text-amber-950">
+                    ¿Devolución {formatMoneda(pendienteVenta)}?
+                  </span>
+                  <button
+                    type="button"
+                    disabled={devolverLoadingId === r.id}
+                    className="rounded-md bg-amber-700 px-2 py-1 text-[0.65rem] font-semibold text-white hover:bg-amber-800 disabled:opacity-60"
+                    onClick={async () => {
+                      setDevolverLoadingId(r.id);
+                      setErr(null);
+                      try {
+                        const res = await fetch(`/api/movimientos/${encodeURIComponent(r.id)}/devolucion`, {
+                          method: "POST",
+                        });
+                        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+                        if (!res.ok) throw new Error(data?.error ?? "No se pudo registrar la devolución");
+                        setDevolverConfirmId(null);
+                        await load();
+                      } catch (e) {
+                        setErr(e instanceof Error ? e.message : "Error");
+                      } finally {
+                        setDevolverLoadingId(null);
+                      }
+                    }}
+                  >
+                    {devolverLoadingId === r.id ? "…" : "Sí"}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md px-2 py-1 text-[0.65rem] font-semibold text-slate-600 hover:bg-white"
+                    onClick={() => setDevolverConfirmId(null)}
+                  >
+                    No
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {puedeMarcarDevolucion ? (
+                    <button
+                      type="button"
+                      className="rounded-md p-1.5 text-slate-400 opacity-0 transition hover:bg-amber-50 hover:text-amber-800 group-hover:opacity-100"
+                      title="Marcar como devolución (resta del saldo y deja la venta sin pendiente)"
+                      onClick={() => {
+                        setDeleteConfirmId(null);
+                        setDevolverConfirmId(r.id);
+                      }}
+                    >
+                      <IconTruck className="size-4" />
+                    </button>
+                  ) : null}
+                  {canDeleteMov ? (
+                    <button
+                      type="button"
+                      className="rounded-md p-1.5 text-slate-400 opacity-0 transition hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100"
+                      title="Eliminar fila"
+                      onClick={() => {
+                        setDevolverConfirmId(null);
+                        setDeleteConfirmId(r.id);
+                      }}
+                    >
+                      <IconTrash className="size-4" />
+                    </button>
+                  ) : null}
+                </>
+              )}
             </div>
           </td>
         </tr>
