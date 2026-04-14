@@ -1,6 +1,7 @@
 /** PDFs de cliente: rutas por entidad en Storage o bajo `/uploads/clientes/…` en disco. */
 import { loadProjectEnv } from "@/lib/env-from-dotenv";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";
@@ -146,16 +147,56 @@ export async function tryRemoveStoredFile(url: string): Promise<void> {
   });
 }
 
+/**
+ * Pagos «de liquidación» de comprobante (marcar pagado): tienen `liquidadoPorPagoId` en las ventas del PDF.
+ * Si borramos solo esas ventas, el pago queda sin referencias y el saldo lo cuenta como anticipo → saldo a favor.
+ * Por eso eliminamos también cada pago cuyas ventas liquidadas son solo las de este archivo.
+ */
+async function idsPagosSoloLigadosAVentasDeArchivo(
+  tx: Prisma.TransactionClient,
+  archivoId: string,
+): Promise<string[]> {
+  const ventasDelArchivo = await tx.movimiento.findMany({
+    where: { archivoId, tipo: "venta" },
+    select: { id: true, liquidadoPorPagoId: true },
+  });
+  const ventaIds = ventasDelArchivo.map((v) => v.id);
+  if (ventaIds.length === 0) return [];
+
+  const pagoCandidatos = [
+    ...new Set(
+      ventasDelArchivo.map((v) => v.liquidadoPorPagoId).filter((x): x is string => Boolean(x)),
+    ),
+  ];
+  const out: string[] = [];
+  for (const pagoId of pagoCandidatos) {
+    const otras = await tx.movimiento.count({
+      where: {
+        tipo: "venta",
+        liquidadoPorPagoId: pagoId,
+        id: { notIn: ventaIds },
+      },
+    });
+    if (otras === 0) out.push(pagoId);
+  }
+  return out;
+}
+
 export async function eliminarArchivo(archivoId: string): Promise<boolean> {
   const archivo = await prisma.archivo.findFirst({
     where: { id: archivoId },
   });
   if (!archivo) return false;
 
-  await prisma.$transaction([
-    prisma.movimiento.deleteMany({ where: { archivoId } }),
-    prisma.archivo.delete({ where: { id: archivoId } }),
-  ]);
+  await prisma.$transaction(async (tx) => {
+    const pagoIds = await idsPagosSoloLigadosAVentasDeArchivo(tx, archivoId);
+    if (pagoIds.length > 0) {
+      await tx.pago.deleteMany({ where: { movimientoPagoId: { in: pagoIds } } });
+      await tx.movimiento.deleteMany({ where: { id: { in: pagoIds }, tipo: "pago" } });
+    }
+    await tx.movimiento.deleteMany({ where: { archivoId } });
+    await tx.archivo.delete({ where: { id: archivoId } });
+  });
 
   await tryRemoveStoredFile(archivo.url);
   return true;
