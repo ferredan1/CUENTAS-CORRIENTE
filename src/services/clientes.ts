@@ -981,6 +981,8 @@ export type ClientePagoHistorialItem = {
   obra: { id: string; nombre: string } | null;
   imputadoAVentas: number;
   anticipo: number;
+  /** Cobro conservado aunque se borró el PDF; no cuenta como anticipo en saldo. */
+  excluirDeAnticipoCartera: boolean;
 };
 
 /** Movimientos `pago` del cliente (más recientes primero), con imputación a ventas vs anticipo. */
@@ -996,6 +998,7 @@ export async function listarHistorialPagosCliente(clienteId: string): Promise<Cl
       medioPago: true,
       comprobante: true,
       descripcion: true,
+      excluirDeAnticipoCartera: true,
       obra: { select: { id: true, nombre: true } },
     },
   });
@@ -1015,6 +1018,7 @@ export async function listarHistorialPagosCliente(clienteId: string): Promise<Cl
       obra: r.obra,
       imputadoAVentas: imp?.imputado ?? 0,
       anticipo: imp?.anticipo ?? 0,
+      excluirDeAnticipoCartera: Boolean(r.excluirDeAnticipoCartera),
     };
   });
 }

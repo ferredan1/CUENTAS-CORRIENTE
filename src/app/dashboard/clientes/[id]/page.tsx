@@ -85,6 +85,7 @@ export default async function ClienteDetallePage({ params }: Props) {
       obra: p.obra,
       imputadoAVentas: p.imputadoAVentas,
       anticipo: p.anticipo,
+      excluirDeAnticipoCartera: p.excluirDeAnticipoCartera,
     })),
     devoluciones: devoluciones.map((d) => ({
       id: d.id,

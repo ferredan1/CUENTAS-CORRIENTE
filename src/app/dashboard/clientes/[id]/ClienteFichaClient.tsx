@@ -38,6 +38,7 @@ type PagoHistorialDTO = {
   obra: { id: string; nombre: string } | null;
   imputadoAVentas: number;
   anticipo: number;
+  excluirDeAnticipoCartera: boolean;
 };
 
 type DevolucionDTO = {
@@ -491,7 +492,8 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
             Cobros registrados (marcar comprobante pagado, cargar pago, etc.), del más reciente al más antiguo.{" "}
             <span className="font-medium text-slate-700">A ventas</span> es lo imputado a facturas o comprobantes;{" "}
             <span className="font-medium text-slate-700">Anticipo</span> es la parte del cobro que quedó como saldo a
-            favor del cliente dentro de ese mismo movimiento.
+            favor del cliente dentro de ese mismo movimiento. Si se borró el PDF del comprobante, el cobro puede seguir
+            listado con la etiqueta «Comprobante borrado»: no suma anticipo en el saldo.
           </p>
           <div className="table-shell overflow-x-auto">
             <table className="table-app min-w-[44rem]">
@@ -521,8 +523,17 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
                     <td className="text-right font-mono text-sm tabular-nums text-emerald-800">
                       {p.anticipo > 0 ? formatMoneda(p.anticipo) : "—"}
                     </td>
-                    <td className="max-w-[8rem] truncate font-mono text-xs tabular-nums text-slate-700">
-                      {p.comprobante ?? "—"}
+                    <td className="max-w-[10rem] text-slate-700">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="truncate font-mono text-xs tabular-nums" title={p.comprobante ?? undefined}>
+                          {p.comprobante ?? "—"}
+                        </span>
+                        {p.excluirDeAnticipoCartera && (
+                          <span className="inline-flex w-fit rounded border border-amber-200 bg-amber-50 px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-900">
+                            Comprobante borrado
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="max-w-[7rem] truncate text-slate-600">{p.obra?.nombre ?? "—"}</td>
                     <td className="max-w-[14rem] truncate text-sm text-slate-600" title={p.descripcion}>

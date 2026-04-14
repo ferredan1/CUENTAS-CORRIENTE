@@ -142,6 +142,11 @@ model Movimiento {
   liquidadoAt    DateTime?
   /** Movimiento de pago que liquidó esta venta (id). */
   liquidadoPorPagoId String?
+  /**
+   * Cobro tipo `pago` que se conserva en historial aunque ya no existan ventas con `liquidadoPorPagoId`
+   * (p. ej. se borró el PDF). No suma como «anticipo» en el saldo de cartera.
+   */
+  excluirDeAnticipoCartera Boolean @default(false)
   notas          String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @default(now()) @updatedAt

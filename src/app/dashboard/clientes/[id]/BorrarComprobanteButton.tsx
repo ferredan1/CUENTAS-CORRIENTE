@@ -44,7 +44,7 @@ export function BorrarComprobanteButton({ archivoId }: { archivoId: string }) {
       <ConfirmModal
         open={open}
         title="Eliminar comprobante"
-        description={`¿Eliminar este comprobante?\n\nSe borra el PDF y todas las ventas importadas desde ese archivo. Si había un cobro «marcar pagado» solo de ese comprobante, también se elimina ese pago para no dejar saldo a favor. No se puede deshacer.${error ? `\n\nError: ${error}` : ""}`}
+        description={`¿Eliminar este comprobante?\n\nSe borra el PDF y todas las ventas importadas desde ese archivo. Si había un cobro «marcar pagado» solo de ese comprobante, el cobro se conserva en el historial de pagos del cliente pero deja de contar como saldo a favor (no genera anticipo en cartera). No se puede deshacer.${error ? `\n\nError: ${error}` : ""}`}
         confirmLabel="Confirmar eliminación"
         loading={loading}
         onCancel={() => setOpen(false)}

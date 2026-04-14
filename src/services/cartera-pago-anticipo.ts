@@ -12,7 +12,10 @@ export function anticipoMontoPago(params: {
   total: number;
   esLiquidador: boolean;
   sumaAplicaciones: number;
+  /** Cobro conservado tras borrar comprobante: no restar como anticipo en cartera. */
+  excluirAnticipoCartera?: boolean;
 }): number {
+  if (params.excluirAnticipoCartera) return 0;
   const t = params.total;
   if (!(t > 0) || !Number.isFinite(t)) return 0;
   const imputado = params.esLiquidador ? t : Math.min(t, Math.max(0, params.sumaAplicaciones));
@@ -71,7 +74,7 @@ export async function mapImputacionAnticipoPorPagoIds(
 
   const movs = await prisma.movimiento.findMany({
     where: { id: { in: pagoIds }, tipo: "pago" },
-    select: { id: true, total: true },
+    select: { id: true, total: true, excluirDeAnticipoCartera: true },
   });
   const ids = movs.map((m) => m.id);
   const { liquidador, aplicadoPorMov } = await liquidadorYAplicadoPorPagoIds(ids);
@@ -82,6 +85,7 @@ export async function mapImputacionAnticipoPorPagoIds(
       total,
       esLiquidador: liquidador.has(m.id),
       sumaAplicaciones: aplicadoPorMov.get(m.id) ?? 0,
+      excluirAnticipoCartera: Boolean(m.excluirDeAnticipoCartera),
     });
     const imputado = Math.max(0, total - anticipo);
     map.set(m.id, { total, anticipo, imputado });
@@ -97,7 +101,7 @@ export async function cargarAnticiposEnPagos(
 ): Promise<AnticipoPagoFila[]> {
   const pagos = await prisma.movimiento.findMany({
     where: { tipo: "pago", ...whereExtra },
-    select: { id: true, clienteId: true, obraId: true, total: true },
+    select: { id: true, clienteId: true, obraId: true, total: true, excluirDeAnticipoCartera: true },
   });
   if (pagos.length === 0) return [];
 
@@ -110,6 +114,7 @@ export async function cargarAnticiposEnPagos(
       total,
       esLiquidador: liquidador.has(p.id),
       sumaAplicaciones: aplicadoPorMov.get(p.id) ?? 0,
+      excluirAnticipoCartera: Boolean(p.excluirDeAnticipoCartera),
     });
     return { clienteId: p.clienteId, obraId: p.obraId, anticipo };
   });

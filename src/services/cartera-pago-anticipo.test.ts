@@ -17,4 +17,15 @@ describe("anticipoMontoPago", () => {
   test("aplicaciones que cubren el total dejan cero", () => {
     expect(anticipoMontoPago({ total: 400, esLiquidador: false, sumaAplicaciones: 400 })).toBe(0);
   });
+
+  test("excluir anticipo cartera (pago tras borrar PDF) deja anticipo en cero", () => {
+    expect(
+      anticipoMontoPago({
+        total: 1000,
+        esLiquidador: false,
+        sumaAplicaciones: 0,
+        excluirAnticipoCartera: true,
+      }),
+    ).toBe(0);
+  });
 });

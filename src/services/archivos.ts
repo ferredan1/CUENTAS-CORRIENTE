@@ -148,9 +148,9 @@ export async function tryRemoveStoredFile(url: string): Promise<void> {
 }
 
 /**
- * Pagos «de liquidación» de comprobante (marcar pagado): tienen `liquidadoPorPagoId` en las ventas del PDF.
- * Si borramos solo esas ventas, el pago queda sin referencias y el saldo lo cuenta como anticipo → saldo a favor.
- * Por eso eliminamos también cada pago cuyas ventas liquidadas son solo las de este archivo.
+ * Pagos «de liquidación» de comprobante (marcar pagado): `liquidadoPorPagoId` en ventas del PDF.
+ * Si borramos esas ventas, el pago quedaría como anticipo total → saldo a favor.
+ * Los marcamos con `excluirDeAnticipoCartera` para que el saldo sea correcto y el cobro siga en el historial.
  */
 async function idsPagosSoloLigadosAVentasDeArchivo(
   tx: Prisma.TransactionClient,
@@ -191,8 +191,10 @@ export async function eliminarArchivo(archivoId: string): Promise<boolean> {
   await prisma.$transaction(async (tx) => {
     const pagoIds = await idsPagosSoloLigadosAVentasDeArchivo(tx, archivoId);
     if (pagoIds.length > 0) {
-      await tx.pago.deleteMany({ where: { movimientoPagoId: { in: pagoIds } } });
-      await tx.movimiento.deleteMany({ where: { id: { in: pagoIds }, tipo: "pago" } });
+      await tx.movimiento.updateMany({
+        where: { id: { in: pagoIds }, tipo: "pago" },
+        data: { excluirDeAnticipoCartera: true },
+      });
     }
     await tx.movimiento.deleteMany({ where: { archivoId } });
     await tx.archivo.delete({ where: { id: archivoId } });
