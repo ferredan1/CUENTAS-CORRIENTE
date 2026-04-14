@@ -1,5 +1,6 @@
 import { Prisma, type EstadoGestionCuenta, type TipoCliente } from "@prisma/client";
 import { Buffer } from "node:buffer";
+import { notasIndicanExcluirAnticipoCartera } from "@/domain/cartera-no-anticipo-notas";
 import { normalizarComprobanteParaDuplicado } from "@/domain/comprobantes/normalize";
 import type { FiltroClientesTabla, OrdenClientesTabla } from "@/types/clientes-tabla";
 import { esEstadoGestionCuenta } from "@/types/estado-gestion-cuenta";
@@ -998,7 +999,7 @@ export async function listarHistorialPagosCliente(clienteId: string): Promise<Cl
       medioPago: true,
       comprobante: true,
       descripcion: true,
-      excluirDeAnticipoCartera: true,
+      notas: true,
       obra: { select: { id: true, nombre: true } },
     },
   });
@@ -1018,7 +1019,7 @@ export async function listarHistorialPagosCliente(clienteId: string): Promise<Cl
       obra: r.obra,
       imputadoAVentas: imp?.imputado ?? 0,
       anticipo: imp?.anticipo ?? 0,
-      excluirDeAnticipoCartera: Boolean(r.excluirDeAnticipoCartera),
+      excluirDeAnticipoCartera: notasIndicanExcluirAnticipoCartera(r.notas),
     };
   });
 }

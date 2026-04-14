@@ -1,4 +1,5 @@
 /** PDFs de cliente: rutas por entidad en Storage o bajo `/uploads/clientes/…` en disco. */
+import { anexarMarcadorNoAnticipoCartera } from "@/domain/cartera-no-anticipo-notas";
 import { loadProjectEnv } from "@/lib/env-from-dotenv";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
@@ -150,7 +151,7 @@ export async function tryRemoveStoredFile(url: string): Promise<void> {
 /**
  * Pagos «de liquidación» de comprobante (marcar pagado): `liquidadoPorPagoId` en ventas del PDF.
  * Si borramos esas ventas, el pago quedaría como anticipo total → saldo a favor.
- * Los marcamos con `excluirDeAnticipoCartera` para que el saldo sea correcto y el cobro siga en el historial.
+ * Les añadimos el marcador en `notas` para que el saldo sea correcto y el cobro siga en el historial.
  */
 async function idsPagosSoloLigadosAVentasDeArchivo(
   tx: Prisma.TransactionClient,
@@ -191,10 +192,16 @@ export async function eliminarArchivo(archivoId: string): Promise<boolean> {
   await prisma.$transaction(async (tx) => {
     const pagoIds = await idsPagosSoloLigadosAVentasDeArchivo(tx, archivoId);
     if (pagoIds.length > 0) {
-      await tx.movimiento.updateMany({
+      const pagos = await tx.movimiento.findMany({
         where: { id: { in: pagoIds }, tipo: "pago" },
-        data: { excluirDeAnticipoCartera: true },
+        select: { id: true, notas: true },
       });
+      for (const p of pagos) {
+        await tx.movimiento.update({
+          where: { id: p.id },
+          data: { notas: anexarMarcadorNoAnticipoCartera(p.notas) },
+        });
+      }
     }
     await tx.movimiento.deleteMany({ where: { archivoId } });
     await tx.archivo.delete({ where: { id: archivoId } });

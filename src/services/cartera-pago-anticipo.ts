@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { notasIndicanExcluirAnticipoCartera } from "@/domain/cartera-no-anticipo-notas";
 import { prisma } from "@/lib/prisma";
 
 export type AnticipoPagoFila = { clienteId: string; obraId: string | null; anticipo: number };
@@ -74,7 +75,7 @@ export async function mapImputacionAnticipoPorPagoIds(
 
   const movs = await prisma.movimiento.findMany({
     where: { id: { in: pagoIds }, tipo: "pago" },
-    select: { id: true, total: true, excluirDeAnticipoCartera: true },
+    select: { id: true, total: true, notas: true },
   });
   const ids = movs.map((m) => m.id);
   const { liquidador, aplicadoPorMov } = await liquidadorYAplicadoPorPagoIds(ids);
@@ -85,7 +86,7 @@ export async function mapImputacionAnticipoPorPagoIds(
       total,
       esLiquidador: liquidador.has(m.id),
       sumaAplicaciones: aplicadoPorMov.get(m.id) ?? 0,
-      excluirAnticipoCartera: Boolean(m.excluirDeAnticipoCartera),
+      excluirAnticipoCartera: notasIndicanExcluirAnticipoCartera(m.notas),
     });
     const imputado = Math.max(0, total - anticipo);
     map.set(m.id, { total, anticipo, imputado });
@@ -101,7 +102,7 @@ export async function cargarAnticiposEnPagos(
 ): Promise<AnticipoPagoFila[]> {
   const pagos = await prisma.movimiento.findMany({
     where: { tipo: "pago", ...whereExtra },
-    select: { id: true, clienteId: true, obraId: true, total: true, excluirDeAnticipoCartera: true },
+    select: { id: true, clienteId: true, obraId: true, total: true, notas: true },
   });
   if (pagos.length === 0) return [];
 
@@ -114,7 +115,7 @@ export async function cargarAnticiposEnPagos(
       total,
       esLiquidador: liquidador.has(p.id),
       sumaAplicaciones: aplicadoPorMov.get(p.id) ?? 0,
-      excluirAnticipoCartera: Boolean(p.excluirDeAnticipoCartera),
+      excluirAnticipoCartera: notasIndicanExcluirAnticipoCartera(p.notas),
     });
     return { clienteId: p.clienteId, obraId: p.obraId, anticipo };
   });
