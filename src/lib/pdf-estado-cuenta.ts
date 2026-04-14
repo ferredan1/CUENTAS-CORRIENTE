@@ -1,3 +1,4 @@
+import { etiquetaTipoMovimientoCliente } from "@/domain/movimientos/etiqueta-tipo";
 import { formatFechaCorta, formatMoneda } from "@/lib/format";
 import type { EstadoCuentaCargado } from "@/services/estado-cuenta-data";
 
@@ -126,7 +127,7 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
     drawHeaderRow(doc.y);
 
     for (const m of data.movimientosConSaldo) {
-      const descText = `[${m.tipo}] ${m.descripcion}`;
+      const descText = `[${etiquetaTipoMovimientoCliente(m)}] ${m.descripcion}`;
       const hDesc = doc.heightOfString(trunc(descText, 500), { width: Math.max(80, descW) });
       const rowH = Math.max(16, Math.min(hDesc + 4, 36));
       ensureSpace(rowH + 4);

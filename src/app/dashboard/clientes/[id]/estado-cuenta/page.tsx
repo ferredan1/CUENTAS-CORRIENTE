@@ -1,3 +1,4 @@
+import { etiquetaTipoMovimientoCliente } from "@/domain/movimientos/etiqueta-tipo";
 import { formatFechaCorta, formatMoneda } from "@/lib/format";
 import { getServerUserId } from "@/lib/get-server-user-id";
 import { prisma } from "@/lib/prisma";
@@ -176,7 +177,9 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
                     </td>
                   ) : null}
                   <td className="text-slate-800 dark:text-slate-100">
-                    <span className="capitalize text-slate-500 dark:text-slate-400">[{m.tipo}]</span>{" "}
+                    <span className="capitalize text-slate-500 dark:text-slate-400">
+                      [{etiquetaTipoMovimientoCliente(m)}]
+                    </span>{" "}
                     {m.descripcion}
                   </td>
                   <td className="text-right font-mono text-xs tabular-nums text-slate-600 dark:text-slate-300">{fmtCant(m)}</td>

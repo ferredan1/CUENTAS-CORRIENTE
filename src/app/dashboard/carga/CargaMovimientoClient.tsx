@@ -1,13 +1,14 @@
 "use client";
 
 import { markPagoCargadoForNextDashboardPage } from "@/components/dashboard/PagoCargadoFlash";
+import { DESCRIPCION_DEFAULT_SALDO_ANTERIOR } from "@/domain/movimientos/etiqueta-tipo";
 import { formatMoneda } from "@/lib/format";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 type ClienteOpt = { id: string; nombre: string; saldo?: number };
 type ObraOpt = { id: string; nombre: string };
-type TipoCarga = "pago" | "devolucion" | "ajuste";
+type TipoCarga = "pago" | "devolucion" | "ajuste" | "saldo_anterior";
 
 function ymdHoyLocal(): string {
   const d = new Date();
@@ -115,12 +116,16 @@ export function CargaMovimientoClient({
       setErr("Indicá un importe válido.");
       return;
     }
-    if ((tipo === "pago" || tipo === "devolucion") && montoNum <= 0) {
+    if ((tipo === "pago" || tipo === "devolucion" || tipo === "saldo_anterior") && montoNum <= 0) {
       setErr("El importe debe ser mayor a cero.");
       return;
     }
     if (tipo === "ajuste" && montoNum === 0) {
       setErr("El ajuste no puede ser 0.");
+      return;
+    }
+    if (tipo === "saldo_anterior" && montoNum < 0) {
+      setErr("El saldo anterior debe ser un importe positivo (lo que adeuda el cliente).");
       return;
     }
 
@@ -155,12 +160,16 @@ export function CargaMovimientoClient({
               body: JSON.stringify({
                 clienteId,
                 obraId: obraId || null,
-                tipo,
+                tipo: tipo === "saldo_anterior" ? "ajuste" : tipo,
                 fecha: new Date(`${fecha}T12:00:00`).toISOString(),
                 comprobante: comprobante.trim() || null,
                 descripcion:
                   descripcion.trim() ||
-                  (tipo === "devolucion" ? "Devolución manual" : "Ajuste manual de saldo"),
+                  (tipo === "devolucion"
+                    ? "Devolución manual"
+                    : tipo === "saldo_anterior"
+                      ? DESCRIPCION_DEFAULT_SALDO_ANTERIOR
+                      : "Ajuste manual de saldo"),
                 cantidad: 1,
                 precioUnitario: tipo === "devolucion" ? Math.abs(montoNum) : montoNum,
               }),
@@ -192,10 +201,15 @@ export function CargaMovimientoClient({
             >
               <option value="pago">Pago</option>
               <option value="devolucion">Devolución</option>
+              <option value="saldo_anterior">Saldo anterior (deuda inicial)</option>
               <option value="ajuste">Ajuste</option>
             </select>
             <p className="mt-1 text-xs text-slate-500">
-              Devolución resta saldo. Ajuste puede sumar o restar según el signo del importe.
+              <span className="font-medium text-slate-600">Pago</span> y{" "}
+              <span className="font-medium text-slate-600">devolución</span> bajan lo que te debe el cliente.{" "}
+              <span className="font-medium text-slate-600">Saldo anterior</span> registra deuda previa (suma al saldo).{" "}
+              <span className="font-medium text-slate-600">Ajuste</span> es corrección manual (importe positivo suma,
+              negativo resta).
             </p>
           </div>
 
@@ -279,7 +293,9 @@ export function CargaMovimientoClient({
                 ? "Importe del pago"
                 : tipo === "devolucion"
                   ? "Importe de la devolución"
-                  : "Importe del ajuste"}
+                  : tipo === "saldo_anterior"
+                    ? "Importe que adeuda el cliente (deuda previa)"
+                    : "Importe del ajuste"}
             </label>
             <input
               className="input-app w-full font-mono tabular-nums"
@@ -292,6 +308,11 @@ export function CargaMovimientoClient({
             {tipo === "ajuste" ? (
               <p className="mt-1 text-xs text-slate-500">
                 En ajustes podés usar signo negativo para restar saldo (ej: -1500).
+              </p>
+            ) : tipo === "saldo_anterior" ? (
+              <p className="mt-1 text-xs text-slate-500">
+                Solo importes positivos. Se guarda como movimiento tipo ajuste con descripción de saldo anterior (misma
+                lógica contable que sumar una venta al saldo).
               </p>
             ) : (
               <p className="mt-1 text-xs text-slate-500">Usá coma o punto para decimales.</p>
@@ -392,10 +413,17 @@ export function CargaMovimientoClient({
         <div className="mt-4">
           <label className="label-field">Descripción</label>
           <input
-            required={tipo !== "pago" || !comprobante.trim()}
+            required={(tipo !== "pago" && tipo !== "saldo_anterior") || (!comprobante.trim() && tipo === "pago")}
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
             className="input-app"
+            placeholder={
+              tipo === "saldo_anterior"
+                ? DESCRIPCION_DEFAULT_SALDO_ANTERIOR
+                : tipo === "ajuste"
+                  ? "Ej. Corrección por redondeo"
+                  : undefined
+            }
           />
           {comprobante.trim() && tipo === "pago" ? (
             <p className="mt-1 text-xs text-slate-500">
@@ -425,7 +453,9 @@ export function CargaMovimientoClient({
               ? "Guardar pago"
               : tipo === "devolucion"
                 ? "Guardar devolución"
-                : "Guardar ajuste"}
+                : tipo === "saldo_anterior"
+                  ? "Guardar saldo anterior"
+                  : "Guardar ajuste"}
         </button>
       </div>
     </form>

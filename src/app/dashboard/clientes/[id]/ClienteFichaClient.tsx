@@ -552,9 +552,13 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
             </table>
           </div>
           <p className="text-xs text-slate-500">
-            Podés cargar un pago desde{" "}
+            Podés cargar un pago o deuda previa desde{" "}
             <Link href={`/dashboard/carga?clienteId=${c.id}`} className="link-app">
               Registrar movimiento
+            </Link>
+            {" · "}
+            <Link href={`/dashboard/carga?clienteId=${c.id}&tipo=saldo_anterior`} className="link-app">
+              Saldo anterior
             </Link>
             .
           </p>

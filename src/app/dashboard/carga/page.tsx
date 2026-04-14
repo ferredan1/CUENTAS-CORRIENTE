@@ -7,19 +7,25 @@ export default async function CargaPage({
 }) {
   const { clienteId, obraId, tipo } = await searchParams;
   const tipoInicial =
-    tipo === "devolucion" || tipo === "ajuste" || tipo === "pago" ? tipo : "pago";
+    tipo === "devolucion" || tipo === "ajuste" || tipo === "pago" || tipo === "saldo_anterior"
+      ? tipo
+      : "pago";
   const titulo =
     tipoInicial === "devolucion"
       ? "Cargar devolución"
       : tipoInicial === "ajuste"
         ? "Cargar ajuste"
-        : "Cargar pago";
+        : tipoInicial === "saldo_anterior"
+          ? "Cargar saldo anterior"
+          : "Cargar pago";
   const subtitulo =
     tipoInicial === "devolucion"
       ? "Registrá una devolución manual para que reste del saldo general del cliente."
       : tipoInicial === "ajuste"
-        ? "Registrá un ajuste manual (positivo o negativo) para corregir saldo anterior."
-        : "Registrá cobros del cliente (efectivo, transferencia, tarjeta o cheque). Las ventas se cargan desde «Subir PDF».";
+        ? "Registrá un ajuste manual (positivo o negativo) para corregir diferencias puntuales."
+        : tipoInicial === "saldo_anterior"
+          ? "Registrá una deuda previa que el cliente ya tenía antes de usar el sistema (suma al saldo a cobrar)."
+          : "Registrá cobros del cliente (efectivo, transferencia, tarjeta o cheque). Las ventas se cargan desde «Subir PDF».";
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
