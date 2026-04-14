@@ -660,7 +660,7 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
             <div className="flex items-center justify-end gap-1">
               <button
                 type="button"
-                className="rounded-md p-1.5 text-slate-400 opacity-0 transition hover:bg-slate-50 hover:text-slate-700 group-hover:opacity-100"
+                className="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-50 hover:text-slate-800"
                 title="Ver historial de cambios"
                 onClick={async () => {
                   try {
@@ -778,7 +778,7 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
                   {puedeMarcarDevolucion ? (
                     <button
                       type="button"
-                      className="rounded-md p-1.5 text-slate-400 opacity-0 transition hover:bg-amber-50 hover:text-amber-800 group-hover:opacity-100"
+                      className="rounded-md p-1.5 text-amber-800/90 transition hover:bg-amber-100 hover:text-amber-950"
                       title="Marcar como devolución (resta del saldo y deja la venta sin pendiente)"
                       onClick={() => {
                         setDeleteConfirmId(null);
@@ -791,7 +791,7 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
                   {canDeleteMov ? (
                     <button
                       type="button"
-                      className="rounded-md p-1.5 text-slate-400 opacity-0 transition hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100"
+                      className="rounded-md p-1.5 text-rose-600/90 transition hover:bg-rose-50 hover:text-rose-700"
                       title="Eliminar fila"
                       onClick={() => {
                         setDevolverConfirmId(null);

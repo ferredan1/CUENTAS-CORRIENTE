@@ -376,9 +376,13 @@ export function ClienteFichaClient({ c }: { c: ClienteFichaDTO }) {
 
           <section className="space-y-3">
             <div className="section-header border-0 pb-0">
-              <h2 className="section-title">Movimientos sin obra</h2>
+              <h2 className="section-title">Productos y movimientos</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Todas las obras y sin obra. Podés marcar devolución (camión) o ir a la pestaña «Movimientos» para la
+                misma grilla completa.
+              </p>
             </div>
-            <ObraMovimientosClient sinObra clienteId={c.id} saldoObra={c.saldoSinObra} />
+            <ObraMovimientosClient todoCliente clienteId={c.id} saldoObra={c.saldo} />
           </section>
 
           <section className="space-y-3">
