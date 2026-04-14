@@ -653,11 +653,11 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
               }}
             />
           </td>
-          <td className="border-r border-slate-100 p-2 text-right font-mono text-xs tabular-nums text-slate-800">
+          <td className="min-w-[7rem] border-r border-slate-100 px-3 py-2 text-right font-mono text-xs tabular-nums text-slate-800 whitespace-nowrap lg:w-32 xl:w-36">
             {formatMoneda(r.total)}
           </td>
-          <td className="p-1.5 text-right align-middle">
-            <div className="flex items-center justify-end gap-1">
+          <td className="min-w-[9.5rem] border-l border-slate-200/70 bg-white p-1.5 text-right align-middle lg:w-40 xl:w-44">
+            <div className="flex shrink-0 flex-nowrap items-center justify-end gap-1.5">
               <button
                 type="button"
                 className="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-50 hover:text-slate-800"
@@ -1114,11 +1114,11 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
                   <th className="border-b border-slate-200 bg-slate-50 p-2 text-left text-[0.65rem] font-semibold uppercase tracking-wide text-slate-600 border-r border-slate-200 lg:w-24">
                     P. unit.
                   </th>
-                  <th className="border-b border-slate-200 bg-slate-50 p-2 text-left text-[0.65rem] font-semibold uppercase tracking-wide text-slate-600 border-r border-slate-200 lg:w-28">
+                  <th className="border-b border-slate-200 bg-slate-50 p-2 text-left text-[0.65rem] font-semibold uppercase tracking-wide text-slate-600 border-r border-slate-200 lg:w-32 xl:w-36">
                     Total
                   </th>
-                  <th className="border-b border-slate-200 bg-slate-50 p-2 text-left text-[0.65rem] font-semibold uppercase tracking-wide text-slate-600 lg:w-16 last:border-r-0">
-                    {" "}
+                  <th className="border-b border-slate-200 bg-slate-50 p-2 text-left text-[0.65rem] font-semibold uppercase tracking-wide text-slate-600 lg:w-40 xl:w-44 last:border-r-0">
+                    <span title="Historial, devolución, eliminar">Acc.</span>
                   </th>
                 </tr>
               </thead>
