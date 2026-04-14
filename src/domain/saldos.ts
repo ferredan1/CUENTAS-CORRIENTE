@@ -1,6 +1,6 @@
 /**
  * Saldo = SUM(venta + ajuste) − SUM(pago) − SUM(devolución).
- * `ajuste` suma como venta (total puede ser negativo para corregir).
+ * `ajuste` suma al mismo lado que la venta: importe positivo aumenta lo adeudado (p. ej. saldo anterior); negativo corrige a la baja.
  */
 export function saldoDesdeTotalesPorTipo(totales: Record<string, number>): number {
   const ventas = (totales["venta"] ?? 0) + (totales["ajuste"] ?? 0);
