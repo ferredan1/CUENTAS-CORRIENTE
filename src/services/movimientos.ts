@@ -1,3 +1,7 @@
+import {
+  anexarMarcadorNoAnticipoCartera,
+  notasIndicanExcluirAnticipoCartera,
+} from "@/domain/cartera-no-anticipo-notas";
 import { normalizarComprobanteParaDuplicado } from "@/domain/comprobantes/normalize";
 import {
   assertPagoChequeCompleto,
@@ -362,12 +366,20 @@ export async function actualizarMovimiento(
       ? patch.estadoCheque
       : ((existente as { estadoCheque?: string | null }).estadoCheque ?? null);
 
-  const notasFinal =
+  let notasFinal: string | null =
     patch.notas === undefined
       ? (existente.notas ?? null)
       : patch.notas === null || typeof patch.notas !== "string" || patch.notas.trim() === ""
         ? null
         : patch.notas.trim();
+
+  if (
+    tipoFinal2 === "pago" &&
+    notasIndicanExcluirAnticipoCartera(existente.notas) &&
+    !notasIndicanExcluirAnticipoCartera(notasFinal)
+  ) {
+    notasFinal = anexarMarcadorNoAnticipoCartera(notasFinal);
+  }
 
   const codigoProductoFinal =
     patch.codigoProducto === undefined
