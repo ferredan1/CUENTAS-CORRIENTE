@@ -539,23 +539,46 @@ export async function actualizarMovimiento(
  * Devolución de mercadería sobre una línea de venta: crea un movimiento `devolucion` y deja la venta
  * con saldo pendiente en cero (no usa `liquidadoAt`, para no contarla como «pagada» en comprobantes).
  */
-export async function registrarDevolucionSobreVenta(ventaMovimientoId: string) {
+export async function registrarDevolucionSobreVenta(
+  ventaMovimientoId: string,
+  opts?: { cantidad?: number },
+) {
   return prisma.$transaction(async (tx) => {
     const v = await tx.movimiento.findFirst({
       where: { id: ventaMovimientoId, tipo: "venta" },
     });
     if (!v) throw new Error("Movimiento no encontrado o no es una venta.");
 
-    const monto = Number(v.saldoPendiente ?? v.total ?? 0);
-    if (!Number.isFinite(monto) || !(monto > 0)) {
+    const saldoPendienteMonto = Number(v.saldoPendiente ?? v.total ?? 0);
+    if (!Number.isFinite(saldoPendienteMonto) || !(saldoPendienteMonto > 0)) {
       throw new Error("La venta no tiene saldo pendiente para registrar una devolución.");
     }
+    const precioUnitario = Number(v.precioUnitario ?? 0);
+    const cantidadVenta = Number(v.cantidad ?? 0);
+    const cantidadPendiente =
+      precioUnitario > 0 && Number.isFinite(cantidadVenta) && cantidadVenta > 0
+        ? Math.max(0, Math.min(cantidadVenta, saldoPendienteMonto / precioUnitario))
+        : 1;
+    const cantidadPedida = opts?.cantidad;
+    const cantidadDevolver =
+      cantidadPedida == null || Number.isNaN(cantidadPedida) ? cantidadPendiente : Number(cantidadPedida);
+    if (!Number.isFinite(cantidadDevolver) || !(cantidadDevolver > 0)) {
+      throw new Error("La cantidad a devolver debe ser mayor a 0.");
+    }
+    if (cantidadDevolver - cantidadPendiente > 0.000001) {
+      throw new Error("La cantidad a devolver supera la cantidad pendiente de la venta.");
+    }
+    const monto = Math.min(
+      saldoPendienteMonto,
+      precioUnitario > 0 ? cantidadDevolver * precioUnitario : saldoPendienteMonto,
+    );
+    const saldoPendienteRestante = Math.max(0, saldoPendienteMonto - monto);
 
     const baseDesc = v.descripcion?.trim() || "Venta";
-    const descripcion =
-      `Devolución — ${baseDesc}`.length > 2000
-        ? `Devolución — ${baseDesc.slice(0, 1980)}…`
-        : `Devolución — ${baseDesc}`;
+    const detalleCantidad =
+      cantidadDevolver + 0.000001 < cantidadPendiente ? ` (${cantidadDevolver} u)` : "";
+    const descripcionRaw = `Devolución${detalleCantidad} — ${baseDesc}`;
+    const descripcion = descripcionRaw.length > 2000 ? `${descripcionRaw.slice(0, 1980)}…` : descripcionRaw;
 
     const dev = await tx.movimiento.create({
       data: {
@@ -568,8 +591,8 @@ export async function registrarDevolucionSobreVenta(ventaMovimientoId: string) {
         normalizedComprobante: v.normalizedComprobante,
         codigoProducto: v.codigoProducto ?? null,
         descripcion,
-        cantidad: 1,
-        precioUnitario: toDecimal2(monto),
+        cantidad: cantidadDevolver,
+        precioUnitario: toDecimal2(precioUnitario > 0 ? precioUnitario : monto),
         total: toDecimal2(monto),
         saldoPendiente: toDecimal2(0),
         medioPago: null,
@@ -580,7 +603,7 @@ export async function registrarDevolucionSobreVenta(ventaMovimientoId: string) {
       },
     });
 
-    const notaMarca = `Devolución registrada (mov. ${dev.id}).`;
+    const notaMarca = `Devolución registrada (mov. ${dev.id}, cantidad ${cantidadDevolver}, monto ${monto.toFixed(2)}).`;
     const notasNext =
       v.notas && String(v.notas).trim().length > 0
         ? `${String(v.notas).trim()}\n${notaMarca}`
@@ -589,7 +612,7 @@ export async function registrarDevolucionSobreVenta(ventaMovimientoId: string) {
     await tx.movimiento.update({
       where: { id: ventaMovimientoId },
       data: {
-        saldoPendiente: toDecimal2(0),
+        saldoPendiente: toDecimal2(saldoPendienteRestante),
         notas: notasNext.length > 8000 ? notasNext.slice(0, 8000) : notasNext,
       },
     });

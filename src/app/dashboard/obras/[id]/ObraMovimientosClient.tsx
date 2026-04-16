@@ -67,6 +67,17 @@ function rowKey(r: MovRow): string {
   ].join("|");
 }
 
+function cantidadPendienteVenta(row: MovRow): number {
+  const pendiente = Number(row.saldoPendiente ?? row.total ?? 0);
+  const pu = Number(row.precioUnitario ?? 0);
+  const cant = Number(row.cantidad ?? 0);
+  if (!(pendiente > 0)) return 0;
+  if (pu > 0 && Number.isFinite(cant) && cant > 0) {
+    return Math.max(0, Math.min(cant, pendiente / pu));
+  }
+  return 1;
+}
+
 function groupKeyForRow(r: MovRow): string | null {
   const c = r.comprobante?.trim();
   if (!c) return null;
@@ -155,6 +166,7 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
     const [showExtraMobileCols, setShowExtraMobileCols] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [devolverConfirmId, setDevolverConfirmId] = useState<string | null>(null);
+    const [devolverCantidad, setDevolverCantidad] = useState<Record<string, string>>({});
     const [devolverLoadingId, setDevolverLoadingId] = useState<string | null>(null);
     const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
     const [showNotasCols, setShowNotasCols] = useState(false);
@@ -434,6 +446,7 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
 
     function renderRow(r: MovRow) {
       const pendienteVenta = r.tipo === "venta" ? Number(r.saldoPendiente ?? r.total ?? 0) : 0;
+      const pendienteCantidad = r.tipo === "venta" ? cantidadPendienteVenta(r) : 0;
       const puedeMarcarDevolucion = r.tipo === "venta" && pendienteVenta > 0.0001;
       const rowErr = rowErrors[r.id] ?? null;
       const baseRow = "group border-b border-slate-100 transition-colors";
@@ -737,10 +750,24 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
                   </button>
                 </div>
               ) : puedeMarcarDevolucion && devolverConfirmId === r.id ? (
-                <div className="flex max-w-[14rem] flex-wrap items-center gap-1 rounded-md bg-amber-50 px-1.5 py-1 ring-1 ring-amber-200/80">
+                <div className="flex max-w-[18rem] flex-wrap items-center gap-1 rounded-md bg-amber-50 px-1.5 py-1 ring-1 ring-amber-200/80">
                   <span className="text-[0.65rem] font-medium text-amber-950">
-                    ¿Devolución {formatMoneda(pendienteVenta)}?
+                    ¿Devolución de {formatMoneda(pendienteVenta)}?
                   </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[0.65rem] text-amber-900">Cant.</span>
+                    <input
+                      type="number"
+                      min={0.0001}
+                      step={0.0001}
+                      value={devolverCantidad[r.id] ?? String(pendienteCantidad)}
+                      onChange={(e) =>
+                        setDevolverCantidad((prev) => ({ ...prev, [r.id]: e.target.value }))
+                      }
+                      className="w-20 rounded border border-amber-300 bg-white px-1 py-0.5 text-[0.65rem] font-mono tabular-nums text-amber-950"
+                    />
+                    <span className="text-[0.6rem] text-amber-800">/ {pendienteCantidad.toFixed(4)}</span>
+                  </div>
                   <button
                     type="button"
                     disabled={devolverLoadingId === r.id}
@@ -749,12 +776,27 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
                       setDevolverLoadingId(r.id);
                       setErr(null);
                       try {
+                        const cantRaw = devolverCantidad[r.id] ?? String(pendienteCantidad);
+                        const cant = Number(String(cantRaw).replace(",", "."));
+                        if (!Number.isFinite(cant) || !(cant > 0)) {
+                          throw new Error("Indicá una cantidad válida para la devolución.");
+                        }
+                        if (cant - pendienteCantidad > 0.000001) {
+                          throw new Error("La cantidad supera lo pendiente de esta venta.");
+                        }
                         const res = await fetch(`/api/movimientos/${encodeURIComponent(r.id)}/devolucion`, {
                           method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ cantidad: cant }),
                         });
                         const data = (await res.json().catch(() => null)) as { error?: string } | null;
                         if (!res.ok) throw new Error(data?.error ?? "No se pudo registrar la devolución");
                         setDevolverConfirmId(null);
+                        setDevolverCantidad((prev) => {
+                          const next = { ...prev };
+                          delete next[r.id];
+                          return next;
+                        });
                         await load();
                       } catch (e) {
                         setErr(e instanceof Error ? e.message : "Error");
@@ -768,7 +810,14 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
                   <button
                     type="button"
                     className="rounded-md px-2 py-1 text-[0.65rem] font-semibold text-slate-600 hover:bg-white"
-                    onClick={() => setDevolverConfirmId(null)}
+                    onClick={() => {
+                      setDevolverConfirmId(null);
+                      setDevolverCantidad((prev) => {
+                        const next = { ...prev };
+                        delete next[r.id];
+                        return next;
+                      });
+                    }}
                   >
                     No
                   </button>
@@ -782,6 +831,10 @@ export function ObraMovimientosClient(props: ObraMovimientosClientProps) {
                       title="Marcar como devolución (resta del saldo y deja la venta sin pendiente)"
                       onClick={() => {
                         setDeleteConfirmId(null);
+                        setDevolverCantidad((prev) => ({
+                          ...prev,
+                          [r.id]: String(cantidadPendienteVenta(r)),
+                        }));
                         setDevolverConfirmId(r.id);
                       }}
                     >

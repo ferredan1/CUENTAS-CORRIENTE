@@ -12,7 +12,18 @@ export async function POST(_req: NextRequest, { params }: Params) {
   const { id } = await params;
 
   try {
-    const devolucion = await registrarDevolucionSobreVenta(id);
+    const body = (await _req.json().catch(() => ({}))) as { cantidad?: unknown };
+    const cantidad =
+      body?.cantidad == null || body.cantidad === ""
+        ? undefined
+        : Number.isFinite(Number(body.cantidad))
+          ? Number(body.cantidad)
+          : NaN;
+    if (cantidad != null && (!Number.isFinite(cantidad) || !(cantidad > 0))) {
+      return NextResponse.json({ error: "Cantidad inválida." }, { status: 400 });
+    }
+
+    const devolucion = await registrarDevolucionSobreVenta(id, { cantidad });
     return NextResponse.json({ ok: true, devolucion: serializeMovimiento(devolucion) });
   } catch (e) {
     const { status, message } = jsonErrorStatus(e);
