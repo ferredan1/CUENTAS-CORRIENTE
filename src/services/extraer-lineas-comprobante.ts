@@ -55,13 +55,15 @@ function esDescripcionSoloCodigoNumerico(s: string): boolean {
   return /^\d{3,12}$/.test(t);
 }
 
-/** Despeja montos AR pegados: primero miles con punto, si no «dígitos,dec». */
+/** Despeja montos AR pegados o separados por espacios: primero miles con punto, si no «dígitos,dec». */
 function parsearImportesPelando(line: string): { cant: string; amounts: string[] } | null {
   const cm = line.match(new RegExp(`^(${RE_DUX_CANT})`));
   if (!cm) return null;
   let r = line.slice(cm[0].length);
   const amounts: string[] = [];
   while (r.length > 0) {
+    r = r.replace(/^\s+/, "");
+    if (r.length === 0) break;
     const longM = r.match(/^\d{1,3}(?:\.\d{3})+,\d{2}/);
     const piece = longM?.[0] ?? r.match(/^\d+,\d{2}/)?.[0];
     if (!piece) return null;

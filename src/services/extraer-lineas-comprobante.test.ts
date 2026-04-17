@@ -217,6 +217,19 @@ ARANDELA PLANA GALVA. 3/8 122G000000F0000
     expect(items.some((it) => it.descripcion.includes("ARANDELA"))).toBe(true);
   });
 
+  it("Factura A: misma línea de importes con espacios entre columnas (pdf-parse típico)", () => {
+    const texto = `
+MARTILLO GALPONERO (MANGO FIBRA+TPR) 16 OZ PROFESIONAL
+BREMEN® 4692
+1,00 14.380,17 0,00 14.380,17 21,00 17.400,00
+`.trim();
+    const items = extraerItemsDelTextoComprobante(texto);
+    expect(items).toHaveLength(1);
+    expect(items[0]!.descripcion).toMatch(/MARTILLO/i);
+    expect(items[0]!.descripcion).toMatch(/BREMEN/i);
+    expect(items[0]!.cantidad).toBe(1);
+  });
+
   it("Factura A Ferretería Dany: martillo dos líneas + IVA (5 montos); línea extra «Descripción» no anula 1.er ítem", () => {
     const texto = `
 FACTURA
