@@ -101,12 +101,27 @@ function lineaPareceEncabezadoOlegalExcluyendoCodigoArticulo(line: string): bool
 }
 
 /**
+ * Rótulos de columna / impuesto sueltos (no son continuación de código ni marca).
+ * Si se anteponen a la descripción, el bloque empieza por «IVA» y se descarta como encabezado.
+ */
+function esRotuloColumnaOImpuestoSuelto(line: string): boolean {
+  const t = line.trim();
+  if (t.length === 0) return false;
+  return (
+    /^(iva|exento|grav\.?|neto|total|sub\s*tot(al)?|importe)$/i.test(t) ||
+    /^sub\s+total\b/i.test(t) ||
+    /^%$/.test(t)
+  );
+}
+
+/**
  * Línea inmediatamente sobre los importes que parece cola de descripción partida
  * (p. ej. «EMPN1H05», «65MM 5919»), no un título de ítem nuevo.
  */
 function lineaPareceFragmentoContinuacionInferior(line: string): boolean {
   const t = line.trim();
   if (t.length === 0) return false;
+  if (esRotuloColumnaOImpuestoSuelto(t)) return false;
   const words = t.split(/\s+/).filter(Boolean);
   if (t.length <= 56 && words.length <= 4) return true;
   if (/^\d{1,3}\s*MM\b/i.test(t)) return true;
@@ -163,9 +178,12 @@ function recolectarBloqueDescripcion(lineas: string[], idxImportes: number): str
 
     const closest = parts[parts.length - 1]!;
     if (lineaPareceFragmentoContinuacionInferior(closest)) {
-      parts.unshift(above);
-      j--;
-      continue;
+      if (!esRotuloColumnaOImpuestoSuelto(above)) {
+        parts.unshift(above);
+        j--;
+        continue;
+      }
+      break;
     }
     /** Nombre largo pegado a importes y línea corta (marca/código) *encima* en el PDF: orden invertido. */
     if (
