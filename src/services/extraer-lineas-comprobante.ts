@@ -123,7 +123,11 @@ function recolectarBloqueDescripcion(lineas: string[], idxImportes: number): str
     if (esLineaSoloImportesDux(raw)) return null;
     const tr = raw.trim();
     // «F045» / «3568» tienen < 5 caracteres pero no son encabezados
-    if (lineaPareceEncabezadoOlegal(raw) && !lineaPareceSoloCodigoInterno(tr)) return null;
+    if (lineaPareceEncabezadoOlegal(raw) && !lineaPareceSoloCodigoInterno(tr)) {
+      /** Títulos de columna repetidos («Descripción», «Sub Total»…) antes de la 1.ª fila: seguir subiendo. */
+      idx--;
+      continue;
+    }
     break;
   }
   if (idx < 0) return null;
@@ -156,10 +160,22 @@ function recolectarBloqueDescripcion(lineas: string[], idxImportes: number): str
     if (lineaPareceEncabezadoOlegal(rawA) && above.length >= 8) break;
 
     const closest = parts[parts.length - 1]!;
-    if (!lineaPareceFragmentoContinuacionInferior(closest)) break;
-
-    parts.unshift(above);
-    j--;
+    if (lineaPareceFragmentoContinuacionInferior(closest)) {
+      parts.unshift(above);
+      j--;
+      continue;
+    }
+    /** Nombre largo pegado a importes y línea corta (marca/código) *encima* en el PDF: orden invertido. */
+    if (
+      closest.length >= 28 &&
+      lineaPareceFragmentoContinuacionInferior(above) &&
+      above.length <= 72
+    ) {
+      parts.push(above);
+      j--;
+      continue;
+    }
+    break;
   }
 
   return parts.join(" ");
@@ -262,7 +278,7 @@ export function extraerItemsFormatoDux(
     return true;
   }
 
-  for (let i = 1; i < lineas.length; i++) {
+  for (let i = 0; i < lineas.length; i++) {
     const numLine = lineas[i]!;
 
     const m4 = numLine.match(RE_DUX_LINEA_IMPORTES);

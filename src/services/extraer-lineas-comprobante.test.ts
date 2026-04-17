@@ -217,6 +217,31 @@ ARANDELA PLANA GALVA. 3/8 122G000000F0000
     expect(items.some((it) => it.descripcion.includes("ARANDELA"))).toBe(true);
   });
 
+  it("Factura A Ferretería Dany: martillo dos líneas + IVA (5 montos); línea extra «Descripción» no anula 1.er ítem", () => {
+    const texto = `
+FACTURA
+Nº 00007-00002194
+FECHA: 17/04/2026
+Descripción
+Descripción
+MARTILLO GALPONERO (MANGO FIBRA+TPR) 16 OZ PROFESIONAL
+BREMEN® 4692
+1,0014.380,170,0014.380,1721,0017.400,00
+CRIQUE BOTELLA 2 TN WEMBLEY® 8117
+1,0032.561,980,0032.561,9821,0039.400,00
+`.trim();
+    const items = extraerItemsDelTextoComprobante(texto);
+    const martillo = items.find((it) => it.descripcion.includes("MARTILLO"));
+    expect(martillo).toBeDefined();
+    expect(martillo!.descripcion).toMatch(/BREMEN/i);
+    expect(martillo!.cantidad).toBe(1);
+    /** Precio unitario efectivo desde subtotal c/ IVA (Factura A), coherente con el resto de tests Dux. */
+    expect(martillo!.precioUnitario).toBeCloseTo(17400, 1);
+    const cric = items.find((it) => it.descripcion.includes("CRIQUE"));
+    expect(cric).toBeDefined();
+    expect(items.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("Dux: no confundir DESCARGA… con encabezado «Desc» (Ferretería Dany)", () => {
     const texto = `
 COMPROBANTE
