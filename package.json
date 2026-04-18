@@ -17,6 +17,7 @@
     "db:migrate": "node -r ./scripts/dotenv-override.cjs ./node_modules/prisma/build/index.js migrate dev",
     "db:deploy": "node -r ./scripts/dotenv-override.cjs ./node_modules/prisma/build/index.js migrate deploy",
     "db:normaliza-importes": "node scripts/normaliza-importes-pago-devolucion.cjs",
+    "db:safety-net": "node scripts/migration-safety-net.cjs",
     "db:studio": "node -r ./scripts/dotenv-override.cjs ./node_modules/prisma/build/index.js studio",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down"
