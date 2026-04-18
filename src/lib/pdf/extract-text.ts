@@ -3,7 +3,8 @@ export function normalizarTextoExtraidoPdf(texto: string): string {
   return texto
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
-    .replace(/\u00A0/g, " ")
+    /** NBSP, narrow NBSP, figure/thin/punctuation space (común entre columnas en PDF). */
+    .replace(/[\u00A0\u202F\u2007\u2009\u2008\u200A\u2000-\u2006]/g, " ")
     .replace(/[\u200B-\u200D\uFEFF]/g, "");
 }
 

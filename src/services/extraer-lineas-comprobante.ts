@@ -41,7 +41,7 @@ const RE_DUX_CANT =
  * Cada monto AR: miles con punto o entero simple (incluye ceros a la izquierda p. ej. 00125,00).
  */
 const RE_DUX_LINEA_IMPORTES = new RegExp(
-  `^(${RE_DUX_CANT})(\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d+,\\d{2})(\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d+,\\d{2})(\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d+,\\d{2})$`,
+  `^(${RE_DUX_CANT})\\s*(\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d+,\\d{2})\\s*(\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d+,\\d{2})\\s*(\\d{1,3}(?:\\.\\d{3})+,\\d{2}|\\d+,\\d{2})$`,
 );
 
 /** Cant., P.U., % desc, subtotal al final de la misma línea que la descripción (muchos PDF Dux). */
@@ -78,6 +78,50 @@ function esLineaSoloImportesDux(line: string): boolean {
   if (RE_DUX_LINEA_IMPORTES.test(line)) return true;
   const p = parsearImportesPelando(line);
   return p !== null && p.amounts.length === 5;
+}
+
+function normalizarEspaciosLineaPdf(line: string): string {
+  return line
+    .replace(/[\u00A0\u202F\u2007\u2009\u2008\u200A\u2000-\u2006]/g, " ")
+    .trim();
+}
+
+function lineaEmpiezaConCantidadDux(line: string): boolean {
+  return new RegExp(`^${RE_DUX_CANT}`).test(line.trim());
+}
+
+/**
+ * Algunos PDF parten la fila de importes en dos líneas; sin fusionar no hay 5 montos ni ítem.
+ */
+function expandirLineasImportesDuxPartidos(lineas: string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < lineas.length; i++) {
+    const cur = lineas[i]!;
+    const next = i + 1 < lineas.length ? lineas[i + 1] : null;
+    if (!next || !cur.trim()) {
+      out.push(cur);
+      continue;
+    }
+    if (!lineaEmpiezaConCantidadDux(cur)) {
+      out.push(cur);
+      continue;
+    }
+    const merged = `${cur.trim()} ${next.trim()}`.replace(/\s+/g, " ");
+    const pMerge = parsearImportesPelando(merged);
+    const pCur = parsearImportesPelando(cur);
+    if (
+      pMerge &&
+      pMerge.amounts.length === 5 &&
+      esLineaSoloImportesDux(merged) &&
+      (pCur === null || pCur.amounts.length < 5)
+    ) {
+      out.push(merged);
+      i++;
+      continue;
+    }
+    out.push(cur);
+  }
+  return out;
 }
 
 /**
@@ -285,11 +329,13 @@ export function extraerItemsFormatoDux(
   texto: string,
   inferirOpts?: OpcionesInferirCodigo,
 ): ItemExtraido[] {
-  const lineas = texto
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .split("\n")
-    .map((l) => l.trim());
+  const lineas = expandirLineasImportesDuxPartidos(
+    texto
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .split("\n")
+      .map((l) => normalizarEspaciosLineaPdf(l)),
+  );
   const items: ItemExtraido[] = [];
 
   function agregar(item: ItemExtraido): boolean {

@@ -230,6 +230,31 @@ BREMEN® 4692
     expect(items[0]!.cantidad).toBe(1);
   });
 
+  it("Factura A: U+202F entre columnas y fila de importes en dos líneas (pdf)", () => {
+    const texto = `
+IVA
+Sub Total c/
+IVA
+MARTILLO GALPONERO (MANGO FIBRA+TPR) 16 OZ PROFESIONAL
+BREMEN® 4692
+1,00\u202F14.380,17\u202F0,00\u202F14.380,17\u202F21,00\u202F17.400,00
+`.trim();
+    const items = extraerItemsDelTextoComprobante(texto);
+    const martillo = items.find((it) => it.descripcion.includes("MARTILLO"));
+    expect(martillo).toBeDefined();
+    expect(martillo!.precioUnitario).toBeCloseTo(17400, 1);
+    const partido = `
+MARTILLO GALPONERO (MANGO FIBRA+TPR) 16 OZ PROFESIONAL
+BREMEN® 4692
+1,00 14.380,17 0,00 14.380,17
+21,00 17.400,00
+`.trim();
+    const items2 = extraerItemsDelTextoComprobante(partido);
+    expect(items2).toHaveLength(1);
+    expect(items2[0]!.descripcion).toMatch(/MARTILLO/i);
+    expect(items2[0]!.precioUnitario).toBeCloseTo(17400, 1);
+  });
+
   it("Factura A Ferretería Dany: martillo dos líneas + IVA (5 montos); línea extra «Descripción» no anula 1.er ítem", () => {
     const texto = `
 FACTURA
