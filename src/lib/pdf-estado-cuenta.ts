@@ -200,7 +200,7 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
         });
         yDash += rowH;
       }
-      const totalResumenObras = data.resumenSaldosPorObra.reduce((s, r) => s + r.saldo, 0);
+      const totalResumenObras = data.saldoCarteraAlCierre;
       const rowHTotal = 26;
       doc.moveTo(pad, yDash)
         .lineTo(pad + fullW, yDash)

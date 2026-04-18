@@ -1,11 +1,14 @@
 /**
  * Saldo = SUM(venta + ajuste) − SUM(pago) − SUM(devolución).
  * `ajuste` suma al mismo lado que la venta: importe positivo aumenta lo adeudado (p. ej. saldo anterior); negativo corrige a la baja.
+ *
+ * `pago` y `devolucion` se tratan como magnitudes que bajan la deuda: si en base quedaron importes negativos (p. ej. grilla o import),
+ * se usan en valor absoluto para que siempre resten del saldo.
  */
 export function saldoDesdeTotalesPorTipo(totales: Record<string, number>): number {
   const ventas = (totales["venta"] ?? 0) + (totales["ajuste"] ?? 0);
-  const pagos = totales["pago"] ?? 0;
-  const devoluciones = totales["devolucion"] ?? 0;
+  const pagos = Math.abs(totales["pago"] ?? 0);
+  const devoluciones = Math.abs(totales["devolucion"] ?? 0);
   return ventas - pagos - devoluciones;
 }
 
@@ -48,6 +51,8 @@ export function totalesPendientesDesdeFilas(
       } else {
         monto = r.liquidadoAt ? 0 : r.total;
       }
+    } else if (r.tipo === "devolucion") {
+      monto = Math.abs(r.total);
     } else {
       monto = r.total;
     }

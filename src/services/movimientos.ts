@@ -89,7 +89,10 @@ export async function crearMovimiento(input: CrearMovimientoInput) {
 
   const cantidad = Number(input.cantidad);
   const precioUnitario = Number(input.precioUnitario);
-  const total = calcularTotalMovimiento(cantidad, precioUnitario);
+  let total = calcularTotalMovimiento(cantidad, precioUnitario);
+  if (tipo === "devolucion" || tipo === "pago") {
+    total = Math.abs(total);
+  }
 
   const medioParsed = tipo === "pago" ? parseMedioPago(input.medioPago) : null;
   const chNum = input.chequeNumero?.trim() || null;

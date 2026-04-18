@@ -13,6 +13,11 @@ describe("saldoDesdeTotalesPorTipo", () => {
       }),
     ).toBe(65);
   });
+
+  test("devoluciones y pagos negativos en agregado restan igual (magnitud)", () => {
+    expect(saldoDesdeTotalesPorTipo({ venta: 100, devolucion: -20 })).toBe(80);
+    expect(saldoDesdeTotalesPorTipo({ venta: 100, pago: -30 })).toBe(70);
+  });
 });
 
 describe("acumularPorTipo", () => {
@@ -45,6 +50,10 @@ describe("totalesPendientesDesdeFilas", () => {
         { tipo: "pago", total: 10, liquidadoAt: null },
       ]),
     ).toEqual({ venta: 35, pago: 10 });
+  });
+
+  test("devolución con total negativo usa magnitud", () => {
+    expect(totalesPendientesDesdeFilas([{ tipo: "devolucion", total: -50 }])).toEqual({ devolucion: 50 });
   });
 });
 
