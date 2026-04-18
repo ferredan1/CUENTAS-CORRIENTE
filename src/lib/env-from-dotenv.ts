@@ -70,6 +70,28 @@ function databaseUrlFromEnvFile(): string | undefined {
   }
 }
 
+/**
+ * Pooler de Supabase (`*.pooler.supabase.com`, típ. puerto 6543) con Prisma + `pg`: sin
+ * `pgbouncer=true` en la query suele fallar en serverless con «connection failure during authentication»
+ * u otros errores de protocolo.
+ *
+ * @see https://supabase.com/docs/guides/database/connecting-to-postgres#connection-pooler
+ */
+function ensureSupabasePoolerParams(urlStr: string): string {
+  try {
+    const u = new URL(urlStr);
+    if (!u.hostname.toLowerCase().includes("pooler.supabase.com")) {
+      return urlStr;
+    }
+    if (!u.searchParams.has("pgbouncer")) {
+      u.searchParams.set("pgbouncer", "true");
+    }
+    return u.toString();
+  } catch {
+    return urlStr;
+  }
+}
+
 export function getDatabaseUrl(): string {
   loadProjectEnv();
   /** En dev, la URL del archivo .env manda sobre variables del sistema (p. ej. DATABASE_URL vieja en Windows). */
@@ -85,6 +107,8 @@ export function getDatabaseUrl(): string {
       "No está definida la URL de Postgres. Seteá `DATABASE_URL` (o en Vercel `POSTGRES_PRISMA_URL` / `POSTGRES_URL`).",
     );
   }
+
+  url = ensureSupabasePoolerParams(url);
 
   // Si vamos a configurar TLS desde `pg` (PG_SSL_CA / PG_SSL_NO_VERIFY), evitamos que `sslmode=...`
   // en la cadena tome control y fuerce verify-full con CA inexistente.
