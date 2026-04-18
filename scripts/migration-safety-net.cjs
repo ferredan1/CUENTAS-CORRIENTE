@@ -3,7 +3,7 @@
  * el schema nuevo, aplica de forma idempotente la migración crítica usando conexión **directa** (DIRECT_URL).
  * Luego marca la migración como aplicada en `_prisma_migrations`.
  *
- * Solo actúa si falta la columna `devolucionVentaOrigenId`. Requiere DIRECT_URL (o URL sin pooler).
+ * Solo actúa si falta la columna `devolucionVentaOrigenId`. Usá `MIGRATE_DATABASE_URL` o `DIRECT_URL`.
  */
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -13,15 +13,20 @@ require("dotenv").config({ path: path.join(__dirname, "..", ".env"), override: t
 
 const ROOT = path.join(__dirname, "..");
 
-function directPostgresUrl() {
+/** Misma prioridad que prisma.config (migraciones + DDL de respaldo). Session pool :5432 va bien; transacción :6543 no. */
+function migrateConnectionUrl() {
   const a =
+    process.env.MIGRATE_DATABASE_URL?.trim() ||
     process.env.DIRECT_URL?.trim() ||
     process.env.DATABASE_URL_UNPOOLED?.trim() ||
     process.env.POSTGRES_URL_NON_POOLING?.trim();
   if (a) return a;
   const db = process.env.DATABASE_URL?.trim();
-  // Solo si parece conexión directa (no pooler 6543): el DDL no conviene vía PgBouncer.
   if (db && !db.includes("pooler.supabase.com") && !db.includes(":6543")) {
+    return db;
+  }
+  // Session pooler Supabase: *.pooler.supabase.com:5432 (DDL/migraciones suelen funcionar; :6543 no).
+  if (db && db.includes("pooler.supabase.com") && db.includes(":5432")) {
     return db;
   }
   return undefined;
@@ -39,11 +44,11 @@ async function columnExists(client, name) {
 }
 
 async function main() {
-  const url = directPostgresUrl();
+  const url = migrateConnectionUrl();
   if (!url) {
     console.warn(
-      "[migration-safety-net] Sin DIRECT_URL (ni URL sin pooler): no se puede aplicar DDL de respaldo. " +
-        "Definí DIRECT_URL en Vercel (puerto 5432, host db.*.supabase.co).",
+      "[migration-safety-net] Sin URL para migraciones. En Vercel definí MIGRATE_DATABASE_URL (Session pool :5432) " +
+        "o DIRECT_URL. Si el build falla con P1001 a db.*.supabase.co, usá Session pool desde Supabase.",
     );
     return;
   }

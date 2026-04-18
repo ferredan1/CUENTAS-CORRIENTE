@@ -10,15 +10,17 @@ config({ path: resolve(findProjectRoot(), ".env"), override: true });
  * Prisma 7 carga esta URL al ejecutar comandos CLI (`migrate deploy`, `db push`, `studio`).
  * `generate` no conecta a la DB; basta una URL bien formada (o el fallback).
  *
- * Importante: `migrate deploy` contra el **pooler** de Supabase (puerto 6543) suele colgar o fallar.
- * Priorizamos URL **directa** (5432) o la que expone Vercel/Supabase sin pooler.
- * La app en runtime sigue usando `getDatabaseUrl()` en `src/lib/prisma.ts` (pooler OK).
+ * En Vercel, `db.*.supabase.co:5432` a veces devuelve P1001 (red); Supabase recomienda para migraciones
+ * la URI **Session pool** (mismo pooler, puerto **5432**, no 6543). Usá `MIGRATE_DATABASE_URL` con esa URI.
+ * El pooler en modo transacción (6543) sigue sin ser ideal para `migrate deploy`.
+ * La app en runtime sigue usando `getDatabaseUrl()` en `src/lib/prisma.ts` (pooler 6543 OK).
  */
 const DATABASE_URL_FALLBACK =
   "postgresql://prisma:prisma@127.0.0.1:5432/prisma_generate_only?schema=public";
 
 function urlForPrismaCli(): string {
   return (
+    process.env.MIGRATE_DATABASE_URL?.trim() ||
     process.env.DIRECT_URL?.trim() ||
     process.env.DATABASE_URL_UNPOOLED?.trim() ||
     process.env.POSTGRES_URL_NON_POOLING?.trim() ||
