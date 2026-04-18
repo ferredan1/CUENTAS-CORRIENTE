@@ -13,6 +13,7 @@ import {
   sumAnticipoPagosPorCliente,
 } from "@/services/cartera-pago-anticipo";
 import { saldoDesdeTotalesPorTipo, saldoEfectivoConCheques } from "@/domain/saldos";
+import { calcularSaldoCarteraYResumenPorObra } from "@/services/saldo-cartera-cliente";
 import { esTipoCliente } from "@/types/domain";
 
 export type EstadoCobranza = "al_dia" | "en_gestion" | "moroso" | "incobrable";
@@ -757,9 +758,6 @@ export async function resumenCarteraPanel() {
 export async function obtenerCliente(clienteId: string) {
   const [
     cliente,
-    ventaObraAgg,
-    otroObraAgg,
-    anticipoPagosFilas,
     ultimoMovimiento,
     movimientosCount,
     pagosChequePendientes,
@@ -787,17 +785,6 @@ export async function obtenerCliente(clienteId: string) {
         },
       },
     }),
-    prisma.movimiento.groupBy({
-      by: ["obraId"],
-      where: { clienteId, tipo: "venta" },
-      _sum: { saldoPendiente: true },
-    }),
-    prisma.movimiento.groupBy({
-      by: ["obraId", "tipo"],
-      where: { clienteId, tipo: { notIn: ["venta", "pago"] } },
-      _sum: { total: true },
-    }),
-    cargarAnticiposEnPagos({ clienteId }),
     prisma.movimiento.findFirst({
       where: { clienteId },
       orderBy: [{ fecha: "desc" }, { createdAt: "desc" }],
@@ -847,51 +834,12 @@ export async function obtenerCliente(clienteId: string) {
 
   if (!cliente) return null;
 
-  const saldoPorTipo: Record<string, number> = {};
-  const saldoSinObraPorTipo: Record<string, number> = {};
-  const saldoPorObraId = new Map<string, Record<string, number>>();
+  const { saldo, resumenPorObra, saldoPorTipo, saldoSinObraPorTipo } =
+    await calcularSaldoCarteraYResumenPorObra(clienteId);
 
-  for (const g of ventaObraAgg) {
-    const sum = Number(g._sum.saldoPendiente ?? 0);
-    saldoPorTipo.venta = (saldoPorTipo.venta ?? 0) + sum;
-    if (g.obraId === null) {
-      saldoSinObraPorTipo.venta = (saldoSinObraPorTipo.venta ?? 0) + sum;
-    } else {
-      const prev = saldoPorObraId.get(g.obraId) ?? {};
-      prev.venta = (prev.venta ?? 0) + sum;
-      saldoPorObraId.set(g.obraId, prev);
-    }
-  }
-  for (const g of otroObraAgg) {
-    const sum = Number(g._sum.total ?? 0);
-    saldoPorTipo[g.tipo] = (saldoPorTipo[g.tipo] ?? 0) + sum;
-    if (g.obraId === null) {
-      saldoSinObraPorTipo[g.tipo] = (saldoSinObraPorTipo[g.tipo] ?? 0) + sum;
-    } else {
-      const prev = saldoPorObraId.get(g.obraId) ?? {};
-      prev[g.tipo] = (prev[g.tipo] ?? 0) + sum;
-      saldoPorObraId.set(g.obraId, prev);
-    }
-  }
-  for (const ap of anticipoPagosFilas) {
-    const sum = ap.anticipo;
-    saldoPorTipo.pago = (saldoPorTipo.pago ?? 0) + sum;
-    if (ap.obraId === null) {
-      saldoSinObraPorTipo.pago = (saldoSinObraPorTipo.pago ?? 0) + sum;
-    } else {
-      const prev = saldoPorObraId.get(ap.obraId) ?? {};
-      prev.pago = (prev.pago ?? 0) + sum;
-      saldoPorObraId.set(ap.obraId, prev);
-    }
-  }
-
-  const obrasConSaldo = cliente.obras.map((o) => ({
-    id: o.id,
-    nombre: o.nombre,
-    saldo: saldoDesdeTotalesPorTipo(saldoPorObraId.get(o.id) ?? {}),
-  }));
-
-  const saldo = saldoDesdeTotalesPorTipo(saldoPorTipo);
+  const obrasConSaldo = resumenPorObra
+    .filter((r): r is (typeof r & { obraId: string }) => r.obraId !== null)
+    .map((r) => ({ id: r.obraId, nombre: r.nombre, saldo: r.saldo }));
   const totalChequesPendientes = Number(pagosChequePendientes._sum.total ?? 0);
 
   const hoy = new Date();

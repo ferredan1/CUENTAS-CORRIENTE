@@ -163,11 +163,7 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
     doc.moveDown(0.15);
     doc.text(`Devoluciones: −${formatMoneda(data.totalDevolucionesPeriodo)}`, left, doc.y);
     doc.moveDown(0.15);
-    const saldoFinal =
-      data.movimientosConSaldo.length > 0
-        ? data.movimientosConSaldo[data.movimientosConSaldo.length - 1]!.saldo
-        : data.saldoAnterior;
-    doc.text(`Saldo al cierre del listado: ${formatMoneda(saldoFinal)}`, left, doc.y);
+    doc.text(`Saldo total (cartera, mismo criterio que la ficha del cliente): ${formatMoneda(data.saldoCarteraAlCierre)}`, left, doc.y);
 
     if (data.resumenSaldosPorObra.length > 0 && incluirObra) {
       doc.addPage({ layout: "portrait", size: "A4" });

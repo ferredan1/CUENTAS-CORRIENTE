@@ -38,13 +38,13 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
     totalPagosSoloPeriodo,
     totalDevolucionesPeriodo,
     resumenSaldosPorObra,
+    saldoCarteraAlCierre,
   } = data;
 
   const mostrarColObra = obras.length > 0 && !obraId && !sinObra;
 
-  const totalResumenObras = resumenSaldosPorObra.reduce((sum, r) => sum + r.saldo, 0);
-  const saldoFinalDetalle =
-    movimientosConSaldo.length > 0 ? movimientosConSaldo[movimientosConSaldo.length - 1]!.saldo : saldoAnterior;
+  const totalResumenObras = saldoCarteraAlCierre;
+  const saldoFinalDetalle = saldoCarteraAlCierre;
 
   const fmtCant = (m: (typeof movimientosConSaldo)[number]) => {
     const n = Number(m.cantidad);
@@ -232,8 +232,13 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
                             : "text-slate-700"
                       }`}
                     >
-                      Total general: {formatMoneda(saldoFinalDetalle)}
+                      Saldo total (cartera): {formatMoneda(saldoFinalDetalle)}
                     </div>
+                    {(desde ?? hasta) ? (
+                      <div className="mt-1 text-[11px] font-normal text-slate-500">
+                        Mismo criterio que «Saldo total» en la ficha; el listado respeta el período, el importe es el saldo vigente para este alcance de obra.
+                      </div>
+                    ) : null}
                   </td>
                 </tr>
               </tfoot>
