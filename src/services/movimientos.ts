@@ -585,6 +585,7 @@ export async function registrarDevolucionSobreVenta(
         clienteId: v.clienteId,
         obraId: v.obraId,
         archivoId: null,
+        devolucionVentaOrigenId: ventaMovimientoId,
         tipo: "devolucion",
         fecha: new Date(),
         comprobante: v.comprobante?.trim() ?? null,

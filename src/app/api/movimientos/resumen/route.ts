@@ -1,6 +1,7 @@
 import { requireAuth } from "@/lib/auth-api";
 import { parseQueryDayEnd, parseQueryDayStart } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
+import { conMovimientoOtroParaSaldoCartera } from "@/domain/cartera-movimiento-where";
 import { cargarAnticiposEnPagos } from "@/services/cartera-pago-anticipo";
 import type { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
     }),
     prisma.movimiento.groupBy({
       by: ["tipo"],
-      where: { ...where, tipo: { notIn: ["venta", "pago"] } },
+      where: conMovimientoOtroParaSaldoCartera(where),
       _sum: { total: true },
     }),
     cargarAnticiposEnPagos(where),

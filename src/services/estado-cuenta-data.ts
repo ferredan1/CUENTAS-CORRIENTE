@@ -83,6 +83,8 @@ export async function cargarDatosEstadoCuenta(
                   clienteId,
                   ...(sinObra ? { obraId: null } : obraId ? { obraId } : {}),
                   fecha: { lt: desde },
+                  /** Las devoluciones sobre venta ya están en el `total` histórico de la venta vía `saldoPendiente` en cartera; no sumar la fila duplicada. */
+                  NOT: { tipo: "devolucion", devolucionVentaOrigenId: { not: null } },
                 },
                 _sum: { total: true },
               })

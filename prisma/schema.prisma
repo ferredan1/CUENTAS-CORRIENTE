@@ -143,12 +143,16 @@ model Movimiento {
   /** Movimiento de pago que liquidó esta venta (id). */
   liquidadoPorPagoId String?
   notas          String?
+  /// Si es `devolucion` generada sobre una línea de venta, apunta a esa venta (el monto ya bajó en `venta.saldoPendiente`; no restar otra vez en cartera).
+  devolucionVentaOrigenId String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @default(now()) @updatedAt
 
   cliente Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   obra    Obra?    @relation(fields: [obraId], references: [id], onDelete: Cascade)
   archivo Archivo? @relation(fields: [archivoId], references: [id], onDelete: Cascade)
+  ventaLineaDevuelta Movimiento? @relation("DevolucionMercaderia", fields: [devolucionVentaOrigenId], references: [id], onDelete: SetNull)
+  devolucionesMercaderiaSobreEsta Movimiento[] @relation("DevolucionMercaderia")
   aplicaciones AplicacionPago[]
   pagoCabeceraDe Pago? @relation("PagoMovimiento")
 

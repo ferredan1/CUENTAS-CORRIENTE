@@ -12,6 +12,7 @@ import {
   mapImputacionAnticipoPorPagoIds,
   sumAnticipoPagosPorCliente,
 } from "@/services/cartera-pago-anticipo";
+import { conMovimientoOtroParaSaldoCartera } from "@/domain/cartera-movimiento-where";
 import { saldoDesdeTotalesPorTipo, saldoEfectivoConCheques } from "@/domain/saldos";
 import { calcularSaldoCarteraYResumenPorObra } from "@/services/saldo-cartera-cliente";
 import { esTipoCliente } from "@/types/domain";
@@ -55,7 +56,7 @@ async function totalesMovimientoPorClienteParaSaldo(
     }),
     prisma.movimiento.groupBy({
       by: ["clienteId", "tipo"],
-      where: { tipo: { notIn: ["venta", "pago"] }, ...idPart },
+      where: conMovimientoOtroParaSaldoCartera({ ...idPart }),
       _sum: { total: true },
     }),
     sumAnticipoPagosPorCliente(

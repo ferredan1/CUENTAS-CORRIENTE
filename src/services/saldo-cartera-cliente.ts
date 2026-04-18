@@ -3,6 +3,7 @@
  * pagos vía anticipo, devoluciones/ajustes con `total`).
  */
 
+import { conMovimientoOtroParaSaldoCartera } from "@/domain/cartera-movimiento-where";
 import { saldoDesdeTotalesPorTipo } from "@/domain/saldos";
 import { prisma } from "@/lib/prisma";
 import { cargarAnticiposEnPagos } from "@/services/cartera-pago-anticipo";
@@ -48,7 +49,7 @@ async function calcularTotalesCarteraCliente(
     }),
     prisma.movimiento.groupBy({
       by: ["obraId", "tipo"],
-      where: { clienteId, tipo: { notIn: ["venta", "pago"] }, ...ow },
+      where: conMovimientoOtroParaSaldoCartera({ clienteId, ...ow }),
       _sum: { total: true },
     }),
     cargarAnticiposEnPagos({ clienteId, ...ow }),
@@ -97,7 +98,7 @@ export async function calcularSaldoCarteraYResumenPorObra(clienteId: string): Pr
     }),
     prisma.movimiento.groupBy({
       by: ["obraId", "tipo"],
-      where: { clienteId, tipo: { notIn: ["venta", "pago"] } },
+      where: conMovimientoOtroParaSaldoCartera({ clienteId }),
       _sum: { total: true },
     }),
     cargarAnticiposEnPagos({ clienteId }),
