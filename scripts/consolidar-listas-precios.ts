@@ -1,5 +1,7 @@
 /**
- * Consolida todos los .xlsx de un ZIP o de un directorio en un JSON único.
+ * Consolida todos los .xlsx de un ZIP o de un directorio en un JSON único
+ * (códigos + descripciones + precios). Ese JSON sirve para enriquecer la extracción
+ * de PDFs: definí CATALOGO_PRODUCTOS_JSON en `.env` apuntando al archivo generado.
  *
  * Uso:
  *   npx tsx scripts/consolidar-listas-precios.ts "C:\\ruta\\listas.zip" --out productos.json

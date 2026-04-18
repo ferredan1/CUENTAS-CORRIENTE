@@ -3,6 +3,12 @@
  * Incluye formato Dux (duxsoftware.com.ar): línea de descripción + línea cant|P.U.|%Desc|Subt pegadas.
  */
 
+import {
+  enriquecerItemsConCatalogo,
+  getCatalogoProductosIndex,
+  type CatalogIndex,
+} from "./catalogo-productos-index";
+
 export type ItemExtraido = {
   codigo: string;
   descripcion: string;
@@ -248,6 +254,34 @@ function recolectarBloqueDescripcion(lineas: string[], idxImportes: number): str
 /** Reservado por compatibilidad con la API de extracción (sin inferencia de SKU). */
 export type OpcionesInferirCodigo = Record<string, never>;
 
+/**
+ * Opciones de extracción: parser Dux + enriquecimiento con catálogo de productos (listas Excel).
+ * Si `catalogoProductos` no se indica, en servidor se intenta `CATALOGO_PRODUCTOS_JSON`.
+ */
+export type OpcionesExtraccionItems = {
+  inferirCodigo?: OpcionesInferirCodigo;
+  /** `null` desactiva el catálogo aunque exista variable de entorno. */
+  catalogoProductos?: CatalogIndex | null;
+};
+
+function catalogoParaExtraccion(opts?: OpcionesExtraccionItems): CatalogIndex | null {
+  if (opts && Object.prototype.hasOwnProperty.call(opts, "catalogoProductos")) {
+    const c = opts.catalogoProductos;
+    if (c === null) return null;
+    if (c !== undefined) return c;
+  }
+  return getCatalogoProductosIndex();
+}
+
+function aplicarCatalogoSiHay(
+  items: ItemExtraido[],
+  opts?: OpcionesExtraccionItems,
+): ItemExtraido[] {
+  const cat = catalogoParaExtraccion(opts);
+  if (!cat || items.length === 0) return items;
+  return enriquecerItemsConCatalogo(items, cat);
+}
+
 function lineaPareceEncabezadoOlegal(line: string): boolean {
   const l = line.trim().toLowerCase();
   if (l.length < 5) return true;
@@ -471,11 +505,12 @@ function intentarLineaProducto(line: string, inferirOpts?: OpcionesInferirCodigo
  */
 export function extraerItemsDeTramoComprobante(
   texto: string,
-  inferirOpts?: OpcionesInferirCodigo,
+  opts?: OpcionesExtraccionItems,
 ): ItemExtraido[] {
+  const inferirOpts = opts?.inferirCodigo;
   const t = texto.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const dux = extraerItemsFormatoDux(t, inferirOpts);
-  if (dux.length > 0) return dux;
+  if (dux.length > 0) return aplicarCatalogoSiHay(dux, opts);
 
   const lineas = t.split("\n");
   const items: ItemExtraido[] = [];
@@ -487,19 +522,19 @@ export function extraerItemsDeTramoComprobante(
     if (items.length >= 300) break;
   }
 
-  return items;
+  return aplicarCatalogoSiHay(items, opts);
 }
 
 /** Texto completo del PDF: parte por Nº de comprobante y concatena ítems (no colapsa líneas iguales entre comprobantes). */
 export function extraerItemsDelTextoComprobante(
   texto: string,
-  inferirOpts?: OpcionesInferirCodigo,
+  opts?: OpcionesExtraccionItems,
 ): ItemExtraido[] {
   const t = texto.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const segmentos = segmentarComprobantesDesdeTexto(t);
   const out: ItemExtraido[] = [];
   for (const seg of segmentos) {
-    out.push(...extraerItemsDeTramoComprobante(seg.texto, inferirOpts));
+    out.push(...extraerItemsDeTramoComprobante(seg.texto, opts));
     if (out.length >= 500) break;
   }
   return out.slice(0, 500);

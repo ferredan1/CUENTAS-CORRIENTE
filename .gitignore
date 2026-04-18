@@ -36,6 +36,7 @@ yarn-error.log*
 
 # backups / exports locales (no subir a Git)
 *.zip
+/data/catalogo-productos.json
 
 # vercel
 .vercel
