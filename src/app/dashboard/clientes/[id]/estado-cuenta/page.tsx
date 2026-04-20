@@ -240,7 +240,7 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
                             : "text-slate-700"
                       }`}
                     >
-                      Saldo total (cartera): {formatMoneda(saldoFinalDetalle)}
+                      Saldo total: {formatMoneda(saldoFinalDetalle)}
                     </div>
                     {(desde ?? hasta) ? (
                       <div className="mt-1 text-[11px] font-normal text-slate-500">
