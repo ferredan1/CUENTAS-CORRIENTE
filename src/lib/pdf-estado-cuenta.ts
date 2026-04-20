@@ -162,15 +162,6 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
     doc.text(`Pagos: -${formatMoneda(data.totalPagosSoloPeriodo)}`, left, doc.y);
     doc.moveDown(0.15);
     doc.text(`Devoluciones: -${formatMoneda(data.totalDevolucionesPeriodo)}`, left, doc.y);
-    doc.moveDown(0.12);
-    doc.fontSize(7.5).fillColor("#475569");
-    doc.text(
-      `Composición devoluciones: ${formatMoneda(data.totalDevolucionesVinculadasVentaPeriodo)} vinculadas a venta (impacto ya en saldo pendiente de cada línea) + ${formatMoneda(data.totalDevolucionesManualPeriodo)} manuales/sin vínculo.`,
-      left,
-      doc.y,
-      { width: right - left },
-    );
-    doc.fillColor("#000000").fontSize(9);
     doc.moveDown(0.15);
     doc.text(`Saldo total: ${formatMoneda(data.saldoCarteraAlCierre)}`, left, doc.y);
 
