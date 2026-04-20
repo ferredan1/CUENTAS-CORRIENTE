@@ -197,7 +197,7 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
                         : "text-slate-800 dark:text-slate-100"
                     }`}
                   >
-                    {m.tipo === "pago" || m.tipo === "devolucion" ? "−" : ""}
+                    {m.tipo === "pago" || m.tipo === "devolucion" ? "-" : ""}
                     {formatMoneda(Number(m.total))}
                   </td>
                 </tr>
@@ -225,8 +225,8 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
                   <td className="py-3 text-right font-mono text-sm text-slate-500">—</td>
                   <td className="py-3 text-right font-mono text-sm">
                     <div className="text-slate-700">Ventas: {formatMoneda(totalVentasPeriodo)}</div>
-                    <div className="text-emerald-700">Pagos: −{formatMoneda(totalPagosSoloPeriodo)}</div>
-                    <div className="text-amber-800">Devoluciones: −{formatMoneda(totalDevolucionesPeriodo)}</div>
+                    <div className="text-emerald-700">Pagos: -{formatMoneda(totalPagosSoloPeriodo)}</div>
+                    <div className="text-amber-800">Devoluciones: -{formatMoneda(totalDevolucionesPeriodo)}</div>
                     <div className="text-[11px] font-normal text-slate-500">
                       Incluye {formatMoneda(totalDevolucionesVinculadasVentaPeriodo)} vinculadas a venta (ya en saldo
                       pendiente) y {formatMoneda(totalDevolucionesManualPeriodo)} manuales/sin vínculo.
