@@ -226,14 +226,6 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
         align: "right",
       });
       doc.restore();
-      doc.fontSize(7.5).fillColor("#475569").font("Helvetica");
-      doc.text(
-        "Cada saldo por obra suma ventas según saldo pendiente y resta pagos y devoluciones manuales. Las devoluciones vinculadas a una venta no se restan otra vez aquí: ya bajaron el saldo pendiente de esa venta.",
-        pad,
-        yDash + rowHTotal + 14,
-        { width: fullW },
-      );
-      doc.fillColor("#000000").fontSize(9);
     }
 
     doc.end();
