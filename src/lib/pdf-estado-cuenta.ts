@@ -141,7 +141,7 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
       const pUnit =
         m.tipo === "pago" || m.tipo === "devolucion" ? "—" : formatMoneda(Number(m.precioUnitario));
       doc.text(pUnit, col.pUnit, yRow, { width: 62, align: "right" });
-      const sign = m.tipo === "pago" || m.tipo === "devolucion" ? "−" : "";
+      const sign = m.tipo === "pago" || m.tipo === "devolucion" ? "-" : "";
       doc.text(`${sign}${formatMoneda(Number(m.total))}`, col.total, yRow, { width: 70, align: "right" });
       doc.y = yRow + rowH;
     }
@@ -159,11 +159,20 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
     doc.font("Helvetica").fontSize(9).moveDown(0.2);
     doc.text(`Ventas / cargos: ${formatMoneda(data.totalVentasPeriodo)}`, left, doc.y);
     doc.moveDown(0.15);
-    doc.text(`Pagos: −${formatMoneda(data.totalPagosSoloPeriodo)}`, left, doc.y);
+    doc.text(`Pagos: -${formatMoneda(data.totalPagosSoloPeriodo)}`, left, doc.y);
     doc.moveDown(0.15);
-    doc.text(`Devoluciones: −${formatMoneda(data.totalDevolucionesPeriodo)}`, left, doc.y);
+    doc.text(`Devoluciones: -${formatMoneda(data.totalDevolucionesPeriodo)}`, left, doc.y);
+    doc.moveDown(0.12);
+    doc.fontSize(7.5).fillColor("#475569");
+    doc.text(
+      `Composición devoluciones: ${formatMoneda(data.totalDevolucionesVinculadasVentaPeriodo)} vinculadas a venta (impacto ya en saldo pendiente de cada línea) + ${formatMoneda(data.totalDevolucionesManualPeriodo)} manuales/sin vínculo.`,
+      left,
+      doc.y,
+      { width: right - left },
+    );
+    doc.fillColor("#000000").fontSize(9);
     doc.moveDown(0.15);
-    doc.text(`Saldo total (cartera, mismo criterio que la ficha del cliente): ${formatMoneda(data.saldoCarteraAlCierre)}`, left, doc.y);
+    doc.text(`Saldo total: ${formatMoneda(data.saldoCarteraAlCierre)}`, left, doc.y);
 
     if (data.resumenSaldosPorObra.length > 0 && incluirObra) {
       doc.addPage({ layout: "portrait", size: "A4" });
@@ -200,7 +209,7 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
         });
         yDash += rowH;
       }
-      const totalResumenObras = data.saldoCarteraAlCierre;
+      const totalResumenObras = data.saldoSumaResumenPorObra;
       const rowHTotal = 26;
       doc.moveTo(pad, yDash)
         .lineTo(pad + fullW, yDash)
@@ -226,6 +235,14 @@ export function buildEstadoCuentaPdfBuffer(data: EstadoCuentaCargado): Promise<B
         align: "right",
       });
       doc.restore();
+      doc.fontSize(7.5).fillColor("#475569").font("Helvetica");
+      doc.text(
+        "Cada saldo por obra suma ventas según saldo pendiente y resta pagos y devoluciones manuales. Las devoluciones vinculadas a una venta no se restan otra vez aquí: ya bajaron el saldo pendiente de esa venta.",
+        pad,
+        yDash + rowHTotal + 14,
+        { width: fullW },
+      );
+      doc.fillColor("#000000").fontSize(9);
     }
 
     doc.end();

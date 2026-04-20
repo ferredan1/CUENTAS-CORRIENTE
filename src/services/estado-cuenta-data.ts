@@ -32,11 +32,17 @@ export type EstadoCuentaCargado = {
   totalPagosPeriodo: number;
   totalPagosSoloPeriodo: number;
   totalDevolucionesPeriodo: number;
+  /** Suma de filas `devolucion` con `devolucionVentaOrigenId` (el bajado ya está en `saldoPendiente` de la venta). */
+  totalDevolucionesVinculadasVentaPeriodo: number;
+  /** Suma de devoluciones manuales / sin vínculo a venta (sí restan en cartera como fila `devolucion`). */
+  totalDevolucionesManualPeriodo: number;
   etiquetaFiltroObra: string;
   /** Saldo por obra (misma lógica que el panel: ventas con `saldoPendiente`, pagos con anticipo, etc.). Solo si el alcance es «todas las obras». */
   resumenSaldosPorObra: { orden: number; obraId: string | null; nombre: string; saldo: number }[];
   /** Saldo total a cobrar según cartera, alineado con «Saldo total» en la ficha del cliente para el mismo alcance de obra. */
   saldoCarteraAlCierre: number;
+  /** Suma de `resumenSaldosPorObra[].saldo` (debe coincidir con `saldoCarteraAlCierre` salvo redondeo). */
+  saldoSumaResumenPorObra: number;
 };
 
 /**
@@ -114,8 +120,13 @@ export async function cargarDatosEstadoCuenta(
   const totalPagosSoloPeriodo = movimientos
     .filter((m) => m.tipo === "pago")
     .reduce((s, m) => s + Number(m.total), 0);
-  const totalDevolucionesPeriodo = movimientos
-    .filter((m) => m.tipo === "devolucion")
+  const movsDevolucion = movimientos.filter((m) => m.tipo === "devolucion");
+  const totalDevolucionesPeriodo = movsDevolucion.reduce((s, m) => s + Number(m.total), 0);
+  const totalDevolucionesVinculadasVentaPeriodo = movsDevolucion
+    .filter((m) => m.devolucionVentaOrigenId != null)
+    .reduce((s, m) => s + Number(m.total), 0);
+  const totalDevolucionesManualPeriodo = movsDevolucion
+    .filter((m) => m.devolucionVentaOrigenId == null)
     .reduce((s, m) => s + Number(m.total), 0);
   const totalPagosPeriodo = totalPagosSoloPeriodo + totalDevolucionesPeriodo;
 
@@ -135,6 +146,13 @@ export async function cargarDatosEstadoCuenta(
     resumenSaldosPorObra = resumenPorObra;
   }
 
+  const saldoSumaResumenPorObra = resumenSaldosPorObra.reduce((s, r) => s + r.saldo, 0);
+  if (resumenSaldosPorObra.length > 0 && Math.abs(saldoSumaResumenPorObra - saldoCarteraAlCierre) > 0.02) {
+    console.warn(
+      `[estado-cuenta] Suma resumen por obra (${saldoSumaResumenPorObra}) ≠ saldo cartera (${saldoCarteraAlCierre}) cliente=${clienteId}`,
+    );
+  }
+
   return {
     cliente,
     obras,
@@ -148,8 +166,11 @@ export async function cargarDatosEstadoCuenta(
     totalPagosPeriodo,
     totalPagosSoloPeriodo,
     totalDevolucionesPeriodo,
+    totalDevolucionesVinculadasVentaPeriodo,
+    totalDevolucionesManualPeriodo,
     etiquetaFiltroObra,
     resumenSaldosPorObra,
     saldoCarteraAlCierre,
+    saldoSumaResumenPorObra,
   };
 }

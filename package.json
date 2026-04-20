@@ -20,7 +20,8 @@
     "db:safety-net": "node scripts/migration-safety-net.cjs",
     "db:studio": "node -r ./scripts/dotenv-override.cjs ./node_modules/prisma/build/index.js studio",
     "db:up": "docker compose up -d",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "reporte:saldo": "node -r ./scripts/dotenv-override.cjs ./node_modules/tsx/dist/cli.mjs scripts/reporte-saldo-cliente.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.6.0",

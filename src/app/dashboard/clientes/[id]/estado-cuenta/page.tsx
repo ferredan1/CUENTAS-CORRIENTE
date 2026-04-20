@@ -37,13 +37,17 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
     totalVentasPeriodo,
     totalPagosSoloPeriodo,
     totalDevolucionesPeriodo,
+    totalDevolucionesVinculadasVentaPeriodo,
+    totalDevolucionesManualPeriodo,
     resumenSaldosPorObra,
     saldoCarteraAlCierre,
+    saldoSumaResumenPorObra,
   } = data;
 
   const mostrarColObra = obras.length > 0 && !obraId && !sinObra;
 
-  const totalResumenObras = saldoCarteraAlCierre;
+  const totalResumenObras =
+    resumenSaldosPorObra.length > 0 ? saldoSumaResumenPorObra : saldoCarteraAlCierre;
   const saldoFinalDetalle = saldoCarteraAlCierre;
 
   const fmtCant = (m: (typeof movimientosConSaldo)[number]) => {
@@ -223,6 +227,10 @@ export default async function EstadoCuentaPage({ params, searchParams }: Props) 
                     <div className="text-slate-700">Ventas: {formatMoneda(totalVentasPeriodo)}</div>
                     <div className="text-emerald-700">Pagos: −{formatMoneda(totalPagosSoloPeriodo)}</div>
                     <div className="text-amber-800">Devoluciones: −{formatMoneda(totalDevolucionesPeriodo)}</div>
+                    <div className="text-[11px] font-normal text-slate-500">
+                      Incluye {formatMoneda(totalDevolucionesVinculadasVentaPeriodo)} vinculadas a venta (ya en saldo
+                      pendiente) y {formatMoneda(totalDevolucionesManualPeriodo)} manuales/sin vínculo.
+                    </div>
                     <div
                       className={`font-semibold ${
                         saldoFinalDetalle > 0
