@@ -550,6 +550,18 @@ type InicioComprobanteEnTexto = {
 };
 
 /**
+ * Formato esperado para comprobantes fiscales (Dux/AFIP típico):
+ * pto de venta y número con cero-padding (ej. 00007-00005213).
+ * Evita falsos positivos como "Nº 40-4" dentro de descripciones.
+ */
+function esParPtoVtaNumeroValido(ptoVta: string, nro: string): boolean {
+  const pv = ptoVta.replace(/\s/g, "");
+  const nr = nro.replace(/\s/g, "");
+  if (!/^\d+$/.test(pv) || !/^\d+$/.test(nr)) return false;
+  return pv.length >= 4 && nr.length >= 4;
+}
+
+/**
  * Recolecta posiciones de comprobante: «Nº 00007-00003213», «Nro 00007-00003213»,
  * «X-00007-00003213» / Factura A con mismo patrón, etc.
  */
@@ -558,6 +570,7 @@ function collectIniciosComprobante(t: string): InicioComprobanteEnTexto[] {
 
   for (const m of t.matchAll(/\bN(?:º|°|ro\.?)\s*(\d+)\s*[-–]\s*(\d+)/gi)) {
     if (m.index === undefined) continue;
+    if (!esParPtoVtaNumeroValido(m[1]!, m[2]!)) continue;
     raw.push({
       index: m.index,
       ptoVta: m[1]!,
@@ -568,6 +581,7 @@ function collectIniciosComprobante(t: string): InicioComprobanteEnTexto[] {
 
   for (const m of t.matchAll(/\b([ABCX])\s*[-–]\s*(\d{1,5})\s*[-–]\s*(\d{4,12})\b/gi)) {
     if (m.index === undefined) continue;
+    if (!esParPtoVtaNumeroValido(m[2]!, m[3]!)) continue;
     raw.push({
       index: m.index,
       ptoVta: m[2]!,
@@ -724,7 +738,7 @@ export function extraerSugerenciaComprobante(texto: string): string | undefined 
     /(?:n[°º]\s*|nro\.?\s*|comp\.?\s*|comprobante\s*)[:#]?\s*([A-Z]?\s*\d[\d\s\-/]{4,24})/i,
     /(?:cbte|comprobante)\s*(?:n[°º]|num)?\s*[:#]?\s*(\d{4,12})/i,
     /(?:punto\s*de\s*venta|pto\.?\s*vta\.?)\s*[:#]?\s*(\d{1,5})\s*[-–/]\s*(\d{4,10})/i,
-    /N(?:º|°|ro\.?)\s*(\d+\s*[-–]\s*\d+)/i,
+    /N(?:º|°|ro\.?)\s*(\d{4,}\s*[-–]\s*\d{4,})/i,
   ];
   for (const re of patrones) {
     const m = t.match(re);

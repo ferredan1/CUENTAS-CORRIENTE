@@ -4,6 +4,7 @@ import pdfParse from "pdf-parse";
 import {
   extraerItemsDeTramoComprobante,
   extraerItemsDelTextoComprobante,
+  extraerSugerenciaComprobante,
   segmentarComprobantesDesdeTexto,
 } from "./extraer-lineas-comprobante";
 import { normalizarTextoExtraidoPdf } from "@/lib/pdf/extract-text";
@@ -331,5 +332,19 @@ DESCARGA APOYO TIPO ROCA NACIONAL 332062
     const itemsFull = extraerItemsDelTextoComprobante(texto);
     expect(itemsFull.length).toBeGreaterThan(0);
     expect(itemsSeg.length).toBeGreaterThan(0);
+  });
+
+  it("no toma 'Nº 40-4' de descripción como comprobante válido", () => {
+    const texto = `
+COMPROBANTE
+Nº 00007-00005210
+FECHA: 23/04/2026
+PINCELETA DE CERDA BLANCA ESPECIAL Nº 40 - 4 P125 1,00 3.550,00 0,00 3.550,00
+`.trim();
+    const segs = segmentarComprobantesDesdeTexto(texto);
+    expect(segs).toHaveLength(1);
+    expect(segs[0]!.comprobante).toBe("00007-00005210");
+    const suger = extraerSugerenciaComprobante(texto);
+    expect(suger).not.toBe("40-4");
   });
 });
